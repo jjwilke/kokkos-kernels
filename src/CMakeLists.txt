@@ -1,55 +1,34 @@
 
+Message("${PACKAGE_NAME}")
 TRIBITS_CONFIGURE_FILE(${PACKAGE_NAME}_config.h)
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
+IF(NOT KOKKOSKERNELS_HAS_TRILINOS)
+SET(TRILINOS_INCDIR "include")
+ELSE()
 SET(TRILINOS_INCDIR ${CMAKE_INSTALL_PREFIX}/${${PROJECT_NAME}_INSTALL_INCLUDE_DIR})
+ENDIF()
 
 #-----------------------------------------------------------------------------
 
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR})
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/impl)
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
-APPEND_GLOB(HEADERS ${DIR}/generated_specializations_hpp/*.hpp)
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/impl/tpls)
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
 
-#Include BLAS
-
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/blas)
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/blas/impl)
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
-
-#Include Sparse
-
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/sparse)
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/sparse/impl)
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
-
-#Include graph
-
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/graph)
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/graph/impl)
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
-
-#Include batched
-
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/batched)
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/batched/impl)
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
-
-#Include Common
-
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/common)
-APPEND_GLOB(HEADERS ${DIR}/*.hpp)
-
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/impl)
+SET(INCLUDE_DIRS
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/impl
+  ${CMAKE_CURRENT_SOURCE_DIR}/impl/tpls
+  ${CMAKE_CURRENT_SOURCE_DIR}/blas
+  ${CMAKE_CURRENT_SOURCE_DIR}/blas/impl
+  ${CMAKE_CURRENT_SOURCE_DIR}/sparse
+  ${CMAKE_CURRENT_SOURCE_DIR}/sparse/impl
+  ${CMAKE_CURRENT_SOURCE_DIR}/graph
+  ${CMAKE_CURRENT_SOURCE_DIR}/graph/impl
+  ${CMAKE_CURRENT_SOURCE_DIR}/batched
+  ${CMAKE_CURRENT_SOURCE_DIR}/batched/impl
+  ${CMAKE_CURRENT_SOURCE_DIR}/common
+  ${CMAKE_CURRENT_SOURCE_DIR}/impl
+)
 
 IF (KokkosKernels_INST_EXECSPACE_SERIAL)
   IF (KokkosKernels_INST_DOUBLE)
@@ -117,20 +96,65 @@ LIST(APPEND HEADERS ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}_config.h)
 
 #-----------------------------------------------------------------------------
 
+foreach(dir ${INCLUDE_DIRS})
+APPEND_GLOB(HEADERS ${dir}/*.hpp)
+endforeach()
+
+SET(INCLUDE_TYPE PUBLIC)
+
+if(NOT KOKKOSKERNELS_HAS_TRILINOS)
+# Follow a different path here if not Trilinos
+# primarily related to creating an interface library
+if (SOURCES) #If we have sources file, this is a regular library
+add_library(kokkoskernels ${SOURCES})
+SET(INCLUDE_TYPE PUBLIC) 
+target_link_libraries(kokkoskernels kokkos::kokkos)
+else() #this is a header-only interface library
+add_library(kokkoskernels INTERFACE)
+SET(INCLUDE_TYPE INTERFACE)
+target_link_libraries(kokkoskernels INTERFACE kokkos::kokkos)
+endif()
+else()
 TRIBITS_ADD_LIBRARY(
   kokkoskernels
   HEADERS ${HEADERS}
   SOURCES ${SOURCES}
-  )
+)
+endif()
+
+foreach(dir ${INCLUDE_DIRS})
+target_include_directories(kokkoskernels ${INCLUDE_TYPE}
+  $<INSTALL_INTERFACE:include>
+  $<BUILD_INTERFACE:${dir}>
+)
+endforeach()
+
+target_include_directories(kokkoskernels ${INCLUDE_TYPE}
+  $<INSTALL_INTERFACE:${TRILINOS_INCDIR}/generated_specializations_hpp>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/impl/generated_specializations_hpp>
+)
+APPEND_GLOB(HEADERS_GENERATED  ${CMAKE_CURRENT_SOURCE_DIR}/impl/generated_specializations_hpp/*.hpp)
+
+INSTALL(FILES ${HEADERS_GENERATED}
+        DESTINATION ${TRILINOS_INCDIR}/generated_specializations_hpp/)
 
 
-SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR}/impl/generated_specializations_hpp)
-APPEND_GLOB(HEADERS_GENERATED  ${DIR}/*.hpp)
-INSTALL(FILES ${HEADERS_GENERATED} DESTINATION ${TRILINOS_INCDIR}/generated_specializations_hpp/)
-#
-# Make a trivial change here if you add a file either to this
-# directory, or to the impl/ subdirectory.  Keep making changes
-# whenever you add or remove a .cpp or .hpp file, and everything will
-# be OK.  Here is another such change, and here is yet another.
-#
+if (NOT KOKKOSKERNELS_HAS_TRILINOS)
+#export and install a package if not part of trilinos
+INSTALL (FILES ${HEADERS}
+         DESTINATION ${TRILINOS_INCDIR}
+)
+
+install(TARGETS kokkoskernels EXPORT kokkoskernels
+        INCLUDES DESTINATION include
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+        LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+
+install(EXPORT kokkoskernels
+        FILE KokkosKernelsTargets.cmake
+        NAMESPACE kokkos::
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake)
+endif()
+
 

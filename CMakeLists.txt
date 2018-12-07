@@ -1,3 +1,29 @@
+IF(COMMAND TRIBITS_PACKAGE_DECL)
+  SET(KOKKOSKERNELS_HAS_TRILINOS ON CACHE BOOL "")
+ELSE()
+  SET(KOKKOSKERNELS_HAS_TRILINOS OFF CACHE BOOL "")
+ENDIF()
+
+
+IF(NOT KOKKOSKERNELS_HAS_TRILINOS)
+  cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+
+  # Define Project Name if this is a standalone build
+  IF(NOT DEFINED ${PROJECT_NAME})
+    project(KokkosKernels CXX)
+    set (KokkosKernels_VERSION_MAJOR 2)
+    set (KokkosKernels_VERSION_MINOR 7)
+    set (KokkosKernels_VERSION_PATCH 4)
+  ENDIF()
+
+  LIST(APPEND CMAKE_MODULE_PATH ${KokkosKernels_SOURCE_DIR}/cmake/tribits)
+  include(tribits)
+
+  find_package(Kokkos REQUIRED)
+ELSE()
+ENDIF()
+
+
 INCLUDE(TribitsETISupport)
 
 #
@@ -353,4 +379,21 @@ TRIBITS_ADD_TEST_DIRECTORIES(unit_test)
 #TRIBITS_ADD_EXAMPLE_DIRECTORIES(example)
 
 TRIBITS_PACKAGE_POSTPROCESS()
+
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(cmake/KokkosKernelsConfig.cmake.in
+                              "${KokkosKernels_BINARY_DIR}/KokkosKernelsConfig.cmake"
+                              INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake)
+write_basic_package_version_file("${KokkosKernels_BINARY_DIR}/KokkosKernelsConfigVersion.cmake"
+        VERSION "${KokkosKernels_VERSION_MAJOR}.${KokkosKernels_VERSION_MINOR}.${KokkosKernels_VERSION_PATCH}"
+        COMPATIBILITY SameMajorVersion)
+
+IF(NOT KOKKOSKERNELS_HAS_TRILINOS)
+install(FILES
+  "${KokkosKernels_BINARY_DIR}/KokkosKernelsConfig.cmake"
+  "${KokkosKernels_BINARY_DIR}/KokkosKernelsConfigVersion.cmake"
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake)
+ENDIF()
 
