@@ -146,13 +146,13 @@ public:
         node_node_set = SetType( set_span );
 
         // May be larger that requested:
-        set_span = node_node_set.span();
+        set_span = node_node_set.capacity(); //span is not a valid function anymore
 
         Kokkos::parallel_for( "kokkos-kernels/example/fenl: NodeNodeGraph" , elem_node_id.extent(0) , *this );
       }
 
       execution_space::fence();
-      results.ratio = (double)node_node_set.size() / (double)node_node_set.span();
+      results.ratio = (double)node_node_set.size() / (double)node_node_set.capacity();
       results.fill_node_set = wall_clock.seconds();
       //--------------------------------
 
@@ -183,7 +183,7 @@ public:
 
       wall_clock.reset();
       phase = FILL_GRAPH_ENTRIES ;
-      Kokkos::parallel_for( node_node_set.span() , *this );
+      Kokkos::parallel_for( node_node_set.capacity() , *this );
 
       execution_space::fence();
       results.fill_graph_entries = wall_clock.seconds();

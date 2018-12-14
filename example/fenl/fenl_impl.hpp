@@ -45,13 +45,14 @@
 #define KOKKOS_EXAMPLE_FENL_IMPL_HPP
 
 #include <math.h>
+#include <cmath>
 
 // Kokkos libraries' headers:
 
 #include <Kokkos_UnorderedMap.hpp>
 #include <Kokkos_StaticCrsGraph.hpp>
 #include <KokkosSparse_spmv.hpp>
-#include <Kokkos_Blas1.hpp>
+#include <KokkosBlas.hpp>
 #include <impl/Kokkos_Timer.hpp>
 
 // Examples headers:
@@ -128,8 +129,8 @@ public:
     , zmax( arg_zmax )
     , T_zmin( arg_T_zmin )
     , T_zmax( arg_T_zmax )
-    , a( ( 1.0 / sqrt(T_zmax) - 1.0 / sqrt(T_zmin) ) / ( zmax - zmin ) )
-    , b( 1.0 / sqrt(T_zmin) )
+    , a( ( 1.0 / ::sqrt(T_zmax) - 1.0 / ::sqrt(T_zmin) ) / ( zmax - zmin ) )
+    , b( 1.0 / ::sqrt(T_zmin) )
     , K( 1.0 / ( 6.0 * a * a ) )
     {}
 

@@ -3,6 +3,6 @@ SET(SOURCES "")
 FILE(GLOB SOURCES *.cpp)
 
 Kokkos_ADD_EXAMPLE_EXECUTABLE(
-  fenl "${SOURCES}"
+  hashmap "${SOURCES}"
 )
 

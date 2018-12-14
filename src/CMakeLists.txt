@@ -2,8 +2,6 @@
 Message("${PACKAGE_NAME}")
 TRIBITS_CONFIGURE_FILE(${PACKAGE_NAME}_config.h)
 
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
 IF(NOT KOKKOSKERNELS_HAS_TRILINOS)
 SET(TRILINOS_INCDIR "include")
@@ -15,6 +13,7 @@ ENDIF()
 
 
 SET(INCLUDE_DIRS
+  ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/impl
   ${CMAKE_CURRENT_SOURCE_DIR}/impl/tpls
@@ -30,64 +29,65 @@ SET(INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR}/impl
 )
 
+SET(SPECIALIZATION_DIR ${CMAKE_CURRENT_SOURCE_DIR}/impl/generated_specializations_cpp)
 IF (KokkosKernels_INST_EXECSPACE_SERIAL)
   IF (KokkosKernels_INST_DOUBLE)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*inst_double_*_Serial_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*inst_double_*_Serial_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_FLOAT)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*inst_float_*_Serial_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*inst_float_*_Serial_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_COMPLEX_DOUBLE)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*_complex_double_*_Serial_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*_complex_double_*_Serial_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_COMPLEX_FLOAT)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*_complex_float_*_Serial_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*_complex_float_*_Serial_*.cpp)
   ENDIF()
 ENDIF()
 
 IF (KokkosKernels_INST_EXECSPACE_THREADS)
   IF (KokkosKernels_INST_DOUBLE)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*inst_double_*_Threads_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*inst_double_*_Threads_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_FLOAT)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*inst_float_*_Threads_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*inst_float_*_Threads_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_COMPLEX_DOUBLE)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*_complex_double_*_Threads_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*_complex_double_*_Threads_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_COMPLEX_FLOAT)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*_complex_float_*_Threads_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*_complex_float_*_Threads_*.cpp)
   ENDIF()
 ENDIF()
 
 IF (KokkosKernels_INST_EXECSPACE_OPENMP)
   IF (KokkosKernels_INST_DOUBLE)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*inst_double_*_OpenMP_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*inst_double_*_OpenMP_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_FLOAT)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*inst_float_*_OpenMP_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*inst_float_*_OpenMP_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_COMPLEX_DOUBLE)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*_complex_double_*_OpenMP_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*_complex_double_*_OpenMP_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_COMPLEX_FLOAT)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*_complex_float_*_OpenMP_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*_complex_float_*_OpenMP_*.cpp)
   ENDIF()
 ENDIF()
 
 IF (KokkosKernels_INST_EXECSPACE_CUDA)
-  APPEND_GLOB(SOURCES ${DIR}/tpls/*_Cuda_*.cpp)
+  APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/tpls/*_Cuda_*.cpp)
   IF (KokkosKernels_INST_DOUBLE)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*inst_double_*_Cuda_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*inst_double_*_Cuda_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_FLOAT)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*inst_float_*_Cuda_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*inst_float_*_Cuda_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_COMPLEX_DOUBLE)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*_complex_double_*_Cuda_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*_complex_double_*_Cuda_*.cpp)
   ENDIF()
   IF (KokkosKernels_INST_COMPLEX_FLOAT)
-    APPEND_GLOB(SOURCES ${DIR}/generated_specializations_cpp/*/*_complex_float_*_Cuda_*.cpp)
+    APPEND_GLOB(SOURCES ${SPECIALIZATION_DIR}/*/*_complex_float_*_Cuda_*.cpp)
   ENDIF()
 ENDIF()
 
@@ -107,12 +107,10 @@ if(NOT KOKKOSKERNELS_HAS_TRILINOS)
 # primarily related to creating an interface library
 if (SOURCES) #If we have sources file, this is a regular library
 add_library(kokkoskernels ${SOURCES})
-SET(INCLUDE_TYPE PUBLIC) 
-target_link_libraries(kokkoskernels kokkos::kokkos)
+target_link_libraries(kokkoskernels ${Kokkos_LIBNAME})
 else() #this is a header-only interface library
 add_library(kokkoskernels INTERFACE)
-SET(INCLUDE_TYPE INTERFACE)
-target_link_libraries(kokkoskernels INTERFACE kokkos::kokkos)
+target_link_libraries(kokkoskernels INTERFACE ${Kokkos_LIBNAME})
 endif()
 else()
 TRIBITS_ADD_LIBRARY(
@@ -120,16 +118,25 @@ TRIBITS_ADD_LIBRARY(
   HEADERS ${HEADERS}
   SOURCES ${SOURCES}
 )
+target_link_libraries(kokkoskernels ${Kokkos_LIBNAME})
 endif()
 
+GET_TARGET_PROPERTY(KK_LIB_TYPE kokkoskernels TYPE)
+IF(${KK_LIB_TYPE} EQUAL "INTERFACE_LIBRARY")
+set(KokkosKernels_LIB_TYPE "INTERFACE")
+ELSE()
+set(KokkosKernels_LIB_TYPE "PUBLIC")
+ENDIF()
+set(KokkosKernels_LIB_TYPE ${KokkosKernels_LIB_TYPE} PARENT_SCOPE)
+
 foreach(dir ${INCLUDE_DIRS})
-target_include_directories(kokkoskernels ${INCLUDE_TYPE}
+target_include_directories(kokkoskernels ${KokkosKernels_LIB_TYPE}
   $<INSTALL_INTERFACE:include>
   $<BUILD_INTERFACE:${dir}>
 )
 endforeach()
 
-target_include_directories(kokkoskernels ${INCLUDE_TYPE}
+target_include_directories(kokkoskernels ${KokkosKernels_LIB_TYPE}
   $<INSTALL_INTERFACE:${TRILINOS_INCDIR}/generated_specializations_hpp>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/impl/generated_specializations_hpp>
 )

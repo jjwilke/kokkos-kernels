@@ -120,9 +120,6 @@ do
     --with-layouts*)
       KOKKOSKERNELS_LAYOUTS="${key#*=}"
       ;;
-    --with-options*)
-      KOKKOSKERNELS_OPTIONS="${key#*=}"
-      ;;
     --with-tpls*)
       KOKKOSKERNELS_ENABLE_TPLS="${key#*=}"
       ;;

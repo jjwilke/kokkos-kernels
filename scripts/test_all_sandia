@@ -4,6 +4,7 @@
 # Global config
 #
 
+
 set -o pipefail
 
 # Determine current machine.
@@ -11,6 +12,182 @@ set -o pipefail
 MACHINE=""
 HOSTNAME=$(hostname)
 PROCESSOR=`uname -p`
+
+#
+# Handle arguments.
+#
+# Default. Machine specific can override.
+DEBUG=False
+ARGS=""
+CUSTOM_BUILD_LIST=""
+QTHREADS_PATH=""
+DRYRUN=False
+BUILD_ONLY=False
+declare -i NUM_JOBS_TO_RUN_IN_PARALLEL=2
+TEST_SCRIPT=False
+SKIP_HWLOC=False
+SPOT_CHECK=False
+BUILD_SYSTEM="make"
+
+PRINT_HELP=False
+OPT_FLAG=""
+CXX_FLAGS_EXTRA=""
+LD_FLAGS_EXTRA=""
+KOKKOS_OPTIONS=""
+jN=32
+
+# This needs to come above everything else
+while [[ $# > 0 ]]
+do
+  key="$1"
+  case $key in
+    --kokkoskernels-path*)
+      KOKKOSKERNELS_PATH="${key#*=}"
+      ;;
+    --kokkos-path*)
+      KOKKOS_PATH="${key#*=}"
+      ;;
+    --qthreads-path*)
+      QTHREADS_PATH="${key#*=}"
+      ;;
+    --build-list*)
+      CUSTOM_BUILD_LIST="${key#*=}"
+      ;;
+    --debug*)
+      DEBUG=True
+      ;;
+    --build-only*)
+      BUILD_ONLY=True
+      ;;
+    --test-script*)
+      TEST_SCRIPT=True
+      ;;
+    --skip-hwloc*)
+      SKIP_HWLOC=True
+      ;;
+    --num*)
+      NUM_JOBS_TO_RUN_IN_PARALLEL="${key#*=}"
+      ;;
+    --dry-run*)
+      DRYRUN=True
+      ;;
+    --spot-check*)
+      SPOT_CHECK=True
+      ;;
+    --arch*)
+      ARCH_FLAG="--arch=${key#*=}"
+      ;;
+    --opt-flag*)
+      OPT_FLAG="${key#*=}"
+      ;;
+    --machine*)
+      MACHINE="${key#*=}"
+      ;;
+    --with-cuda-options*)
+      KOKKOS_CUDA_OPTIONS="--with-cuda-options=${key#*=}"
+      ;;
+    --with-kokkos-options*)
+      KOKKOS_OPTIONS="--with-kokkos-options=${key#*=}"
+      ;;
+    --cxxflags-extra*)
+      CXX_FLAGS_EXTRA="${key#*=}"
+      ;;
+    --cxxstandard*)
+      CXX_STANDARD="${key#*=}"
+      ;;
+    --ldflags-extra*)
+      LD_FLAGS_EXTRA="${key#*=}"
+      ;;
+    --with-scalars*)
+      KOKKOSKERNELS_SCALARS="${key#*=}"
+      ;;
+    --with-ordinals*)
+      KOKKOSKERNELS_ORDINALS="${key#*=}"
+      ;;
+    --with-offsets*)
+      KOKKOSKERNELS_OFFSETS="${key#*=}"
+      ;;
+    --build-system*)
+      BUILD_SYSTEM="${key#*=}"
+      ;;
+    --with-layouts*)
+      KOKKOSKERNELS_LAYOUTS="${key#*=}"
+      ;;
+    --with-tpls*)
+      KOKKOSKERNELS_ENABLE_TPLS="${key#*=}"
+      ;;
+    --help*)
+      PRINT_HELP=True
+      ;;
+    --j*)
+      jN="${key#*=}"
+      ;;
+    *)
+      # args, just append
+      ARGS="$ARGS $1"
+      ;;
+  esac
+
+  shift
+done
+
+#This needs to come first otherwise script complains about unhandled machine
+if [ "$PRINT_HELP" = "True" ]; then
+  echo "test_all_sandia <ARGS> <OPTIONS>:"
+  echo "--kokkoskernels-path=/Path/To/Kokkos: Path to the KokkosKernels root directory"
+  echo "    Defaults to root repo containing this script"
+  echo "--kokkos-path=/Path/To/Kokkos: Path to the Kokkos root directory"
+  echo "    Defaults to KokkosKernelsPath/../kokkos"
+  echo "--debug: Run tests in debug. Defaults to False"
+  echo "--test-script: Test this script, not Kokkos"
+  echo "--skip-hwloc: Do not do hwloc tests"
+  echo "--num=N: Number of jobs to run in parallel"
+  echo "--spot-check: Minimal test set to issue pull request"
+  echo "--build-system=SYSTEM: Specify 'make' or 'cmake' build"
+  echo "--j=N: Specify number of processors for parallel execution"
+  echo "--dry-run: Just print what would be executed"
+  echo "--build-only: Just do builds, don't run anything"
+  echo "--opt-flag=FLAG: Optimization flag (default: -O3)"
+  echo "--arch=ARCHITECTURE: overwrite architecture flags"
+  echo "--with-cuda-options=OPT: set KOKKOS_CUDA_OPTIONS"
+  echo "--build-list=BUILD,BUILD,BUILD..."
+  echo "    Provide a comma-separated list of builds instead of running all builds"
+  echo "    Valid items:"
+  echo "      OpenMP, Pthread, Qthreads, Serial, OpenMP_Serial, Pthread_Serial"
+  echo "      Qthreads_Serial, Cuda_OpenMP, Cuda_Pthread, Cuda_Serial"
+  echo ""
+
+  echo "ARGS: list of expressions matching compilers to test"
+  echo "  supported compilers sems"
+  for COMPILER_DATA in "${COMPILERS[@]}"; do
+    ARR=($COMPILER_DATA)
+    COMPILER=${ARR[0]}
+    echo "    $COMPILER"
+  done
+  echo ""
+
+  echo "Examples:"
+  echo "  Run all tests"
+  echo "  % test_all_sandia"
+  echo ""
+  echo "  Run all gcc tests"
+  echo "  % test_all_sandia gcc"
+  echo ""
+  echo "  Run all gcc/4.7.2 and all intel tests"
+  echo "  % test_all_sandia gcc/4.7.2 intel"
+  echo ""
+  echo "  Run all tests in debug"
+  echo "  % test_all_sandia --debug"
+  echo ""
+  echo "  Run gcc/4.7.2 and only do OpenMP and OpenMP_Serial builds"
+  echo "  % test_all_sandia gcc/4.7.2 --build-list=OpenMP,OpenMP_Serial"
+  echo ""
+  echo "If you want to kill the tests, do:"
+  echo "  hit ctrl-z"
+  echo "  % kill -9 %1"
+  echo
+  exit 0
+fi
 
 if [[ "$HOSTNAME" =~ (white|ride).* ]]; then
   MACHINE=white
@@ -68,113 +245,7 @@ INTEL_WARNING_FLAGS="-Werror,-Wall,-Wshadow,-pedantic,-Wsign-compare,-Wtype-limi
 CUDA_WARNING_FLAGS="-Wall,-Wshadow,-pedantic,-Wsign-compare,-Wtype-limits,-Wuninitialized"
 PGI_WARNING_FLAGS=""
 
-# Default. Machine specific can override.
-DEBUG=False
-ARGS=""
-CUSTOM_BUILD_LIST=""
-QTHREADS_PATH=""
-DRYRUN=False
-BUILD_ONLY=False
-declare -i NUM_JOBS_TO_RUN_IN_PARALLEL=2
-TEST_SCRIPT=False
-SKIP_HWLOC=False
-SPOT_CHECK=False
 
-PRINT_HELP=False
-OPT_FLAG=""
-CXX_FLAGS_EXTRA=""
-LD_FLAGS_EXTRA=""
-KOKKOS_OPTIONS=""
-
-#
-# Handle arguments.
-#
-
-while [[ $# > 0 ]]
-do
-  key="$1"
-
-  case $key in
-    --kokkoskernels-path*)
-      KOKKOSKERNELS_PATH="${key#*=}"
-      ;;
-    --kokkos-path*)
-      KOKKOS_PATH="${key#*=}"
-      ;;
-    --qthreads-path*)
-      QTHREADS_PATH="${key#*=}"
-      ;;
-    --build-list*)
-      CUSTOM_BUILD_LIST="${key#*=}"
-      ;;
-    --debug*)
-      DEBUG=True
-      ;;
-    --build-only*)
-      BUILD_ONLY=True
-      ;;
-    --test-script*)
-      TEST_SCRIPT=True
-      ;;
-    --skip-hwloc*)
-      SKIP_HWLOC=True
-      ;;
-    --num*)
-      NUM_JOBS_TO_RUN_IN_PARALLEL="${key#*=}"
-      ;;
-    --dry-run*)
-      DRYRUN=True
-      ;;
-    --spot-check*)
-      SPOT_CHECK=True
-      ;;
-    --arch*)
-      ARCH_FLAG="--arch=${key#*=}"
-      ;;
-    --opt-flag*)
-      OPT_FLAG="${key#*=}"
-      ;;
-    --with-cuda-options*)
-      KOKKOS_CUDA_OPTIONS="--with-cuda-options=${key#*=}"
-      ;;
-    --with-kokkos-options*)
-      KOKKOS_OPTIONS="--with-kokkos-options=${key#*=}"
-      ;;
-    --cxxflags-extra*)
-      CXX_FLAGS_EXTRA="${key#*=}"
-      ;;
-    --cxxstandard*)
-      CXX_STANDARD="${key#*=}"
-      ;;
-    --ldflags-extra*)
-      LD_FLAGS_EXTRA="${key#*=}"
-      ;;
-    --with-scalars*)
-      KOKKOSKERNELS_SCALARS="${key#*=}"
-      ;;
-    --with-ordinals*)
-      KOKKOSKERNELS_ORDINALS="${key#*=}"
-      ;;
-    --with-offsets*)
-      KOKKOSKERNELS_OFFSETS="${key#*=}"
-      ;;
-    --with-layouts*)
-      KOKKOSKERNELS_LAYOUTS="${key#*=}"
-      ;;
-    --with-tpls*)
-      KOKKOSKERNELS_ENABLE_TPLS="${key#*=}"
-      ;;
-    --help*)
-      PRINT_HELP=True
-      ;;
-    *)
-      # args, just append
-      ARGS="$ARGS $1"
-      ;;
-  esac
-
-  shift
-done
 
 SCRIPT_KOKKOS_ROOT=$( cd "$( dirname "$0" )" && cd .. && pwd )
 
@@ -382,6 +453,18 @@ elif [ "$MACHINE" = "apollo" ]; then
     ARCH_FLAG="--arch=SNB,Volta70"
   fi
 
+elif [ "$MACHINE" = "darwin" ]; then
+  #Test on an arbitrary machine with a given set of compilers that support OpenMP
+
+  SKIP_HWLOC=True
+
+  BUILD_LIST_CLANG="Serial,OpenMP,Pthread"
+
+  # Format: (compiler module-list build-list exe-name warning-flag)
+  # no different between spot check and full test
+  COMPILERS=(
+    "clang "None" $BUILD_LIST_CLANG clang++ $CLANG_WARNING_FLAGS"
+  )
 else
   echo "Unhandled machine $MACHINE" >&2
   exit 1
@@ -393,60 +476,6 @@ declare -i NUM_RESULTS_TO_KEEP=7
 
 RESULT_ROOT_PREFIX=TestAll
 
-if [ "$PRINT_HELP" = "True" ]; then
-  echo "test_all_sandia <ARGS> <OPTIONS>:"
-  echo "--kokkoskernels-path=/Path/To/Kokkos: Path to the KokkosKernels root directory"
-  echo "    Defaults to root repo containing this script"
-  echo "--kokkos-path=/Path/To/Kokkos: Path to the Kokkos root directory"
-  echo "    Defaults to KokkosKernelsPath/../kokkos"
-  echo "--debug: Run tests in debug. Defaults to False"
-  echo "--test-script: Test this script, not Kokkos"
-  echo "--skip-hwloc: Do not do hwloc tests"
-  echo "--num=N: Number of jobs to run in parallel"
-  echo "--spot-check: Minimal test set to issue pull request"
-  echo "--dry-run: Just print what would be executed"
-  echo "--build-only: Just do builds, don't run anything"
-  echo "--opt-flag=FLAG: Optimization flag (default: -O3)"
-  echo "--arch=ARCHITECTURE: overwrite architecture flags"
-  echo "--with-cuda-options=OPT: set KOKKOS_CUDA_OPTIONS"
-  echo "--build-list=BUILD,BUILD,BUILD..."
-  echo "    Provide a comma-separated list of builds instead of running all builds"
-  echo "    Valid items:"
-  echo "      OpenMP, Pthread, Qthreads, Serial, OpenMP_Serial, Pthread_Serial"
-  echo "      Qthreads_Serial, Cuda_OpenMP, Cuda_Pthread, Cuda_Serial"
-  echo ""
-
-  echo "ARGS: list of expressions matching compilers to test"
-  echo "  supported compilers sems"
-  for COMPILER_DATA in "${COMPILERS[@]}"; do
-    ARR=($COMPILER_DATA)
-    COMPILER=${ARR[0]}
-    echo "    $COMPILER"
-  done
-  echo ""
-
-  echo "Examples:"
-  echo "  Run all tests"
-  echo "  % test_all_sandia"
-  echo ""
-  echo "  Run all gcc tests"
-  echo "  % test_all_sandia gcc"
-  echo ""
-  echo "  Run all gcc/4.7.2 and all intel tests"
-  echo "  % test_all_sandia gcc/4.7.2 intel"
-  echo ""
-  echo "  Run all tests in debug"
-  echo "  % test_all_sandia --debug"
-  echo ""
-  echo "  Run gcc/4.7.2 and only do OpenMP and OpenMP_Serial builds"
-  echo "  % test_all_sandia gcc/4.7.2 --build-list=OpenMP,OpenMP_Serial"
-  echo ""
-  echo "If you want to kill the tests, do:"
-  echo "  hit ctrl-z"
-  echo "  % kill -9 %1"
-  echo
-  exit 0
-fi
 
 # Set build type.
 if [ "$DEBUG" = "True" ]; then
@@ -519,6 +548,17 @@ get_compiler_version() {
   echo $1 | cut -d/ -f2
 }
 
+get_cmake_defines() {
+  local list=echo $1 | sed s/,/\\n/g
+  local prefix=$2
+  local defines=""
+  for i in ${list}
+  do
+    defines="$defines -D${prefix}_${i}=ON"
+  done
+  echo $defines
+}
+
 # Do not call directly.
 get_compiler_data() {
   local compiler=$1
@@ -588,17 +628,20 @@ setup_env() {
   local compiler=$1
   local compiler_modules=$(get_compiler_modules $compiler)
 
-  module purge
+  if [ "$compiler_modules"  != "None" ]; then
+    module purge
 
-  local mod
-  for mod in $compiler_modules; do
-    echo "Loading module $mod"
-    module load $mod 2>&1
-    # It is ridiculously hard to check for the success of a loaded
-    # module. Module does not return error codes and piping to grep
-    # causes module to run in a subshell.
-    module list 2>&1 | grep "$mod" >& /dev/null || return 1
-  done
+    local mod
+    for mod in $compiler_modules; do
+      echo "Loading module $mod"
+      module load $mod 2>&1
+      # It is ridiculously hard to check for the success of a loaded
+      # module. Module does not return error codes and piping to grep
+      # causes module to run in a subshell.
+      module list 2>&1 | grep "$mod" >& /dev/null || return 1
+    done
+  fi
+
 
   return 0
 }
@@ -667,17 +710,91 @@ single_build_and_test() {
       run_cmd ls fake_problem >& ${desc}.configure.log || { report_and_log_test_result 1 $desc configure && return 0; }
     fi
   else
-    run_cmd ${KOKKOSKERNELS_PATH}/scripts/generate_makefile.bash --with-devices=$build $ARCH_FLAG --compiler=$(which $compiler_exe) --cxxflags=\"$cxxflags\" --cxxstandard=\"$cxx_standard\" --ldflags=\"$ldflags\" $extra_args --kokkos-path=${KOKKOS_PATH} --kokkoskernels-path=${KOKKOSKERNELS_PATH} --with-scalars=${KOKKOSKERNELS_SCALARS} --with-ordinals=${KOKKOSKERNELS_ORDINALS} --with-offsets=${KOKKOSKERNELS_OFFSETS} --with-layouts=${KOKKOSKERNELS_LAYOUTS} --with-tpls=${KOKKOSKERNELS_ENABLE_TPLS} &>> ${desc}.configure.log || { report_and_log_test_result 1 ${desc} configure && return 0; }
-    local -i build_start_time=$(date +%s)
-    run_cmd make -j 32 build-test >& ${desc}.build.log || { report_and_log_test_result 1 ${desc} build && return 0; }
-    local -i build_end_time=$(date +%s)
-    comment="build_time=$(($build_end_time-$build_start_time))"
-
-    if [[ "$BUILD_ONLY" == False ]]; then
-      run_cmd make test >& ${desc}.test.log || { report_and_log_test_result 1 ${desc} test && return 0; }
-      local -i run_end_time=$(date +%s)
-      comment="$comment run_time=$(($run_end_time-$build_end_time))"
+    if [ ! -d "$KOKKOS_PATH" ]; then
+      >&2 echo "${KOKKOS_PATH} is not a valid Kokkos source path - specify with --kokkos-path" 
+      exit 1
     fi
+    if [ ! -f "$KOKKOS_PATH/core/src/Makefile" ]; then
+      >&2 echo "${KOKKOS_PATH} is a valid folder, but could not find Makefile at ${KOKKOS_PATH}/core/src/Makefile"
+      exit 1
+    fi
+
+    if [ "$BUILD_SYSTEM" = "make" ]; then
+      run_cmd ${KOKKOSKERNELS_PATH}/scripts/generate_makefile.bash \
+        --with-devices=$build $ARCH_FLAG \
+        --compiler=$(which $compiler_exe) \
+        --cxxflags=\"$cxxflags\" \
+        --cxxstandard=\"$cxx_standard\" \
+        --ldflags=\"$ldflags\" $extra_args \
+        --kokkos-path=${KOKKOS_PATH} \
+        --kokkoskernels-path=${KOKKOSKERNELS_PATH} \
+        --with-scalars=${KOKKOSKERNELS_SCALARS} \
+        --with-ordinals=${KOKKOSKERNELS_ORDINALS} \
+        --with-offsets=${KOKKOSKERNELS_OFFSETS} \
+        --with-layouts=${KOKKOSKERNELS_LAYOUTS} \
+        --with-tpls=${KOKKOSKERNELS_ENABLE_TPLS} \
+       >> ${desc}.configure.log 2>&1 || { report_and_log_test_result 1 ${desc} configure && return 0; }
+      local -i build_start_time=$(date +%s)
+      run_cmd make -j ${jN} build-test >& ${desc}.build.log || { report_and_log_test_result 1 ${desc} build && return 0; }
+      local -i build_end_time=$(date +%s)
+      comment="build_time=$(($build_end_time-$build_start_time))"
+      if [[ "$BUILD_ONLY" == False ]]; then
+        run_cmd make test >& ${desc}.test.log || { report_and_log_test_result 1 ${desc} test && return 0; }
+        local -i run_end_time=$(date +%s)
+        comment="$comment run_time=$(($run_end_time-$build_end_time))"
+      fi
+    elif [ "$BUILD_SYSTEM" = "cmake" ]; then
+      local rootdir=`pwd`
+      local cmake_defines="-DCMAKE_CXX_COMPILER='$compiler_exe' -DCMAKE_CXX_FLAGS='$cxxflags' -DCMAKE_EXE_LINKER_FLAGS='$ldflags'"
+      layouts=$(get_cmake_defines ${KOKKOSKERNELS_LAYOUTS} "KOKKOSKERNELS_INST")
+      ordinals=$(get_cmake_defines ${KOKKOSKERNELS_ORDINALS} "KOKKOSKERNELS_INST_ORDINAL")
+      tpls=$(get_cmake_defines ${KOKKOSKERNELS_ENABLE_TPLS} "KOKKOSKERNELS_ENABLE_TPL")
+      scalars=$(get_cmake_defines ${KOKKOSKERNELS_SCALARS} "KOKKOSKERNELS_INST")
+      offsets=$(get_cmake_defines ${KOKKOSKERNELS_OFFSETs} "KOKKOSKERNELS_INST_OFFSET")
+
+      mkdir kokkos && cd kokkos && mkdir inst 
+      run_cmd cmake ${cmake_defines} \
+        -DCMAKE_INSTALL_PREFIX=${rootdir}/kokkos/inst \
+        -DKokkos_ENABLE_${build}=ON \
+        ${KOKKOS_PATH} \
+        >> ${desc}.configure.log 2>&1 || { report_and_log_test_result 1 ${desc} configure && return 0; }
+
+      local -i build_start_time=$(date +%s)
+      cd ${rootdir}/kokkos 
+      run_cmd make -j ${jN} install >> ${desc}.build.log 2>&1 || { report_and_log_test_result 1 ${desc} build && return 0; }
+
+
+      cd ${rootdir} && mkdir kernels && cd kernels 
+      run_cmd cmake ${cmake_defines} \
+        -DCMAKE_INSTALL_PREFIX=${rootdir}/kernels/inst \
+        -DKokkos_DIR=${rootdir}/kokkos/inst/lib/cmake \
+        ${layouts} \
+        ${ordinals} \
+        ${tpls} \
+        ${scalars} \
+        ${offset} \
+        ${KOKKOSKERNELS_PATH} \
+       >> ${desc}.configure.log 2>&1 || { report_and_log_test_result 1 ${desc} configure && return 0; }
+
+      cd ${rootdir}/kernels 
+      run_cmd make -j ${jN} install >> ${desc}.build.log 2>&1 || { report_and_log_test_result 1 ${desc} build && return 0; }
+      local -i build_end_time=$(date +%s)
+
+      if [[ "$BUILD_ONLY" == False ]]; then
+        cd ${rootdir}/kokkos
+        run_cmd make -j ${jN} test >> ${desc}.test.log 2>&1 || { report_and_log_test_result 1 ${desc} test && return 0; }
+
+        cd ${rootdir}/kernels  
+        run_cmd make -j ${jN} test >> ${desc}.test.log 2>&1 || { report_and_log_test_result 1 ${desc} test && return 0; }
+        local -i run_end_time=$(date +%s)
+        comment="$comment run_time=$(($run_end_time-$build_end_time))"
+      fi
+      cd ${rootdir}
+    else
+      >&2 echo "Invalid build system specified: ${BUILD_SYSTEM}. Must be 'make' or 'cmake'"
+      exit 1 
+    fi
+
   fi
 
   report_and_log_test_result 0 $desc "$comment"
