@@ -2,7 +2,8 @@ SET(SOURCES "")
 
 FILE(GLOB SOURCES *.cpp)
 
-Kokkos_ADD_EXAMPLE_EXECUTABLE(
-  hashmap "${SOURCES}"
+KOKKOS_ADD_EXE(
+  hashmap 
+  SOURCES ${SOURCES}
 )
 

@@ -1,8 +1,7 @@
+
 TRIBITS_PACKAGE_DEFINE_DEPENDENCIES(
-  SUBPACKAGES_DIRS_CLASSIFICATIONS_OPTREQS
-    #SubPackageName       Directory         Class    Req/Opt
-    #
-    # New Kokkos subpackages:
-    KokkosKernels         src              PS       REQUIRED
-    Example               example          EX      OPTIONAL
-  )
+  LIB_REQUIRED_PACKAGES KokkosCore KokkosContainers KokkosAlgorithms KokkosGtest
+  LIB_OPTIONAL_TPLS quadmath MKL BLAS LAPACK CUSPARSE
+  TEST_OPTIONAL_TPLS yaml-cpp
+)
+

@@ -1,9 +1,8 @@
 
-Message("${PACKAGE_NAME}")
 TRIBITS_CONFIGURE_FILE(${PACKAGE_NAME}_config.h)
 
 
-IF(NOT KOKKOSKERNELS_HAS_TRILINOS)
+IF(NOT KOKKOS_HAS_TRILINOS)
 SET(TRILINOS_INCDIR "include")
 ELSE()
 SET(TRILINOS_INCDIR ${CMAKE_INSTALL_PREFIX}/${${PROJECT_NAME}_INSTALL_INCLUDE_DIR})
@@ -11,8 +10,8 @@ ENDIF()
 
 #-----------------------------------------------------------------------------
 
-
-SET(INCLUDE_DIRS
+KOKKOS_SET_TRIBITS_INCLUDES(
+  CORE_INCLUDE_DIRS
   ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/impl
@@ -27,6 +26,7 @@ SET(INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR}/batched/impl
   ${CMAKE_CURRENT_SOURCE_DIR}/common
   ${CMAKE_CURRENT_SOURCE_DIR}/impl
+  ${CMAKE_CURRENT_SOURCE_DIR}/impl/generated_specializations_hpp
 )
 
 SET(SPECIALIZATION_DIR ${CMAKE_CURRENT_SOURCE_DIR}/impl/generated_specializations_cpp)
@@ -102,7 +102,7 @@ endforeach()
 
 SET(INCLUDE_TYPE PUBLIC)
 
-if(NOT KOKKOSKERNELS_HAS_TRILINOS)
+if(NOT KOKKOS_HAS_TRILINOS)
 # Follow a different path here if not Trilinos
 # primarily related to creating an interface library
 if (SOURCES) #If we have sources file, this is a regular library
@@ -118,35 +118,33 @@ TRIBITS_ADD_LIBRARY(
   HEADERS ${HEADERS}
   SOURCES ${SOURCES}
 )
-target_link_libraries(kokkoskernels ${Kokkos_LIBNAME})
+#target_link_libraries(kokkoskernels ${Kokkos_LIBNAME})
 endif()
 
 GET_TARGET_PROPERTY(KK_LIB_TYPE kokkoskernels TYPE)
 IF(${KK_LIB_TYPE} EQUAL "INTERFACE_LIBRARY")
 set(KokkosKernels_LIB_TYPE "INTERFACE")
+message(FATAL_ERROR "Trilinos Tribits does not currently support interface libraries")
 ELSE()
 set(KokkosKernels_LIB_TYPE "PUBLIC")
 ENDIF()
 set(KokkosKernels_LIB_TYPE ${KokkosKernels_LIB_TYPE} PARENT_SCOPE)
 
-foreach(dir ${INCLUDE_DIRS})
-target_include_directories(kokkoskernels ${KokkosKernels_LIB_TYPE}
-  $<INSTALL_INTERFACE:include>
-  $<BUILD_INTERFACE:${dir}>
-)
-endforeach()
+
+KOKKOS_TARGET_INCLUDES(kokkoskernels ${CORE_INCLUDE_DIRS})
 
 target_include_directories(kokkoskernels ${KokkosKernels_LIB_TYPE}
+  $<INSTALL_INTERFACE:include>
   $<INSTALL_INTERFACE:${TRILINOS_INCDIR}/generated_specializations_hpp>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/impl/generated_specializations_hpp>
 )
+
 APPEND_GLOB(HEADERS_GENERATED  ${CMAKE_CURRENT_SOURCE_DIR}/impl/generated_specializations_hpp/*.hpp)
 
 INSTALL(FILES ${HEADERS_GENERATED}
         DESTINATION ${TRILINOS_INCDIR}/generated_specializations_hpp/)
 
 
-if (NOT KOKKOSKERNELS_HAS_TRILINOS)
+if (NOT KOKKOS_HAS_TRILINOS)
 #export and install a package if not part of trilinos
 INSTALL (FILES ${HEADERS}
          DESTINATION ${TRILINOS_INCDIR}

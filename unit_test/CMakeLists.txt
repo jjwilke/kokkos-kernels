@@ -1,19 +1,21 @@
 
-
-SET(TEST_INCLUDE_BINARY_DIRS
+KOKKOS_SET_TRIBITS_INCLUDES(
+ UNIT_TEST_INCLUDES
  ${CMAKE_CURRENT_BINARY_DIR}
  ${CMAKE_CURRENT_BINARY_DIR}/blas
  ${CMAKE_CURRENT_BINARY_DIR}/graph
  ${CMAKE_CURRENT_BINARY_DIR}/sparse
 )
-#${CMAKE_CURRENT_BINARY_DIR}/batched
 
-SET(TEST_INCLUDE_SOURCE_DIRS
+KOKKOS_APPEND_TRIBITS_INSTALL_INCLUDES(
+ UNIT_TEST_INCLUDES
  ${CMAKE_CURRENT_SOURCE_DIR}
  ${CMAKE_CURRENT_SOURCE_DIR}/blas
  ${CMAKE_CURRENT_SOURCE_DIR}/graph
  ${CMAKE_CURRENT_SOURCE_DIR}/sparse
 )
+
+#${CMAKE_CURRENT_BINARY_DIR}/batched
 #${CMAKE_CURRENT_SOURCE_DIR}/batched
 
 # Kyungjoo: when kokkoskernels and kokkos are symbolic link and their src directories are overrided
@@ -21,38 +23,24 @@ SET(TEST_INCLUDE_SOURCE_DIRS
 #           at the same place
 #SET(GTEST_SOURCE_DIR ${${PARENT_PACKAGE_NAME}_SOURCE_DIR}/../kokkos/tpls/gtest)
 # Disables pthreads, this is a problem for serial builds in Trilinos & Sierra if it's enabled.
+# Just point to a common kokkos_gtest to avoid this
 
-#TRIBITS_ADD_LIBRARY(
-#  kokkoskernels_gtest
-#  HEADERS ${GTEST_SOURCE_DIR}/gtest/gtest.h
-#  SOURCES ${GTEST_SOURCE_DIR}/gtest/gtest-all.cc
-#  TESTONLY
-#)
-#This comes in from kokkos
-#TARGET_COMPILE_OPTIONS(kokkoskernels_gest "-DGTEST_HAS_PTHREAD=0")
-#TARGET_INCLUDE_DIRECTORIES(kokkoskernels_gtest PUBLIC ${GTEST_SOURCE_DIR})
-
-function(KokkosKernels_ADD_TEST name folder glob)
+FUNCTION(KokkosKernels_ADD_TEST name folder glob)
   # There are no binary include files - I don't know why this is used
   # removing does not seem to break it
   #INCLUDE_DIRECTORIES(blas_cuda ${CMAKE_CURRENT_BINARY_DIR}/cuda)
 
   APPEND_GLOB(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/${folder}/${glob})
 
-  TRIBITS_ADD_EXECUTABLE_AND_TEST(
+  KOKKOS_ADD_TEST(
     ${name}_${folder}
-    NOEXEPREFIX 
-    SOURCES
-      Test_Main.cpp
-      ${TEST_SOURCES}
-    NUM_MPI_PROCS 1
-    TESTONLYLIBS ${Kokkos_LIBTESTNAME} kokkoskernels
+    SOURCES ${TEST_SOURCES}
+    INCLUDES 
+      ${CMAKE_CURRENT_SOURCE_DIR}/${name}
+      ${CMAKE_CURRENT_SOURCE_DIR}/${folder}
     ARGS ${ARGN}
   )
-  TARGET_LINK_LIBRARIES(${name}_${folder} PRIVATE kokkoskernels_test_common)
-  TARGET_INCLUDE_DIRECTORIES(${name}_${folder} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/${folder})
-  TARGET_INCLUDE_DIRECTORIES(${name}_${folder} PRIVATE ${TEST_INCLUDE_SOURCE_DIRS})
-endfunction()
+ENDFUNCTION()
 
 
 IF (Kokkos_ENABLE_Cuda)

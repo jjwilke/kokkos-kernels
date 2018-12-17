@@ -2,7 +2,8 @@ SET(SOURCES "")
 
 FILE(GLOB SOURCES *.cpp)
 
-Kokkos_ADD_EXAMPLE_EXECUTABLE(
-  fenl "${SOURCES}"
+KOKKOS_ADD_EXE(
+  fenl 
+  SOURCES ${SOURCES}
 )
 

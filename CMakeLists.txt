@@ -1,16 +1,17 @@
 IF(COMMAND TRIBITS_PACKAGE_DECL)
-  SET(KOKKOSKERNELS_HAS_TRILINOS ON CACHE BOOL "")
+  SET(KOKKOS_HAS_TRILINOS ON CACHE BOOL "")
   SET(Kokkos_LIBNAME kokkos)
   SET(Kokkos_LIBTESTNAME kokkos_gtest)
 ELSE()
-  SET(KOKKOSKERNELS_HAS_TRILINOS OFF CACHE BOOL "")
+  SET(KOKKOS_HAS_TRILINOS OFF CACHE BOOL "")
   SET(Kokkos_LIBNAME kokkos::kokkos)
   SET(Kokkos_LIBTESTNAME kokkos::kokkos_gtest)
   SET(TPL_ENABLE_yaml-cpp OFF CACHE BOOL "")
 ENDIF()
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/kokkos_wrappers.cmake)
 
-IF(NOT KOKKOSKERNELS_HAS_TRILINOS)
+IF(NOT KOKKOS_HAS_TRILINOS)
   cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 
   # Define Project Name if this is a standalone build
@@ -386,8 +387,8 @@ TRIBITS_ADD_EXAMPLE_DIRECTORIES(example)
 TRIBITS_PACKAGE_POSTPROCESS()
 
 
+IF(NOT KOKKOS_HAS_TRILINOS)
 include(CMakePackageConfigHelpers)
-
 configure_package_config_file(cmake/KokkosKernelsConfig.cmake.in
                               "${KokkosKernels_BINARY_DIR}/KokkosKernelsConfig.cmake"
                               INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake)
@@ -395,7 +396,6 @@ write_basic_package_version_file("${KokkosKernels_BINARY_DIR}/KokkosKernelsConfi
         VERSION "${KokkosKernels_VERSION_MAJOR}.${KokkosKernels_VERSION_MINOR}.${KokkosKernels_VERSION_PATCH}"
         COMPATIBILITY SameMajorVersion)
 
-IF(NOT KOKKOSKERNELS_HAS_TRILINOS)
 install(FILES
   "${KokkosKernels_BINARY_DIR}/KokkosKernelsConfig.cmake"
   "${KokkosKernels_BINARY_DIR}/KokkosKernelsConfigVersion.cmake"

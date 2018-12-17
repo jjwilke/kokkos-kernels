@@ -9,26 +9,13 @@
 # build correctly with or without MPI, but only run them with a single
 # MPI process.
 
-FUNCTION(ADD_PERF_EXECUTABLE NAME SOURCELIST)
-TRIBITS_ADD_EXECUTABLE(
+#Forward through arguments to the add test function
+FUNCTION(ADD_PERF_EXECUTABLE NAME)
+KOKKOS_ADD_TEST(
   ${NAME}
-  SOURCES ${SOURCELIST}
-  NOEXEPREFIX 
-)
-TARGET_INCLUDE_DIRECTORIES(
- ${NAME} PRIVATE
- ${CMAKE_CURRENT_BINARY_DIR}
- ${CMAKE_CURRENT_SOURCE_DIR}
-)
-TARGET_LINK_LIBRARIES(
- ${NAME}
- PRIVATE
- kokkoskernels_test_common
-)
-TARGET_LINK_LIBRARIES(
- ${NAME}
- PRIVATE
- kokkoskernels
+  TESTONLYLIBS kokkoskernels_test_common
+  BUILDONLY
+  ${ARGN} #just forward all args
 )
 ENDFUNCTION()
 
