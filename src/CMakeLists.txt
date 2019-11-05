@@ -319,7 +319,6 @@ KOKKOSKERNELS_GENERATE_ETI(Sparse_gauss_seidel_apply gauss_seidel_apply
 )
 
 LIST(APPEND HEADERS ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}_config.h)
-
 #Add a few other utility files
 LIST(APPEND SOURCES
  batched/KokkosBatched_Util.cpp
