@@ -271,6 +271,18 @@ KOKKOSKERNELS_GENERATE_ETI(Sparse_spgemm_numeric spgemm_numeric
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES_W_SLOW_SPACE
 )
 
+KOKKOSKERNELS_GENERATE_ETI(Sparse_spiluk_symbolic spiluk_symbolic
+  HEADER_LIST HEADERS
+  SOURCE_LIST SOURCES
+  TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES
+)
+
+KOKKOSKERNELS_GENERATE_ETI(Sparse_spiluk_numeric spiluk_numeric
+  HEADER_LIST HEADERS
+  SOURCE_LIST SOURCES
+  TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES
+)
+
 KOKKOSKERNELS_GENERATE_ETI(Sparse_sptrsv_symbolic sptrsv_symbolic
   HEADER_LIST HEADERS
   SOURCE_LIST SOURCES
@@ -302,6 +314,14 @@ KOKKOSKERNELS_GENERATE_ETI(Sparse_gauss_seidel_apply gauss_seidel_apply
 )
 
 LIST(APPEND HEADERS ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}_config.h)
+
+#Add a few other utility files
+LIST(APPEND SOURCES
+ batched/KokkosBatched_Util.cpp
+ impl/tpls/KokkosBlas_Host_tpl.cpp
+ impl/tpls/KokkosBlas_Cuda_tpl.cpp
+)
+
 
 #-----------------------------------------------------------------------------
 
