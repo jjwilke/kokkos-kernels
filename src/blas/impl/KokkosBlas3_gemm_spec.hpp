@@ -89,7 +89,9 @@ struct gemm_eti_spec_avail {
 
 // Include the actual specialization declarations
 #include<KokkosBlas3_gemm_tpl_spec_avail.hpp>
+#ifdef KOKKOSKERNELS_ENABLE_GEMM
 #include<generated_specializations_hpp/KokkosBlas3_gemm_eti_spec_avail.hpp>
+#endif
 
 namespace KokkosBlas {
 namespace Impl {
@@ -255,6 +257,8 @@ template struct GEMM< \
     KOKKOSBLAS3_GEMM_ETI_SPEC_INST_LAYOUTS(SCALAR, Kokkos::LayoutRight, Kokkos::LayoutRight, LAYOUT, EXEC_SPACE, MEM_SPACE)
 
 #include<KokkosBlas3_gemm_tpl_spec_decl.hpp>
+#ifdef KOKKOSKERNELS_ENABLE_GEMM
 #include<generated_specializations_hpp/KokkosBlas3_gemm_eti_spec_decl.hpp>
+#endif
 
 #endif // KOKKOSBLAS3_GEMM_SPEC_HPP_

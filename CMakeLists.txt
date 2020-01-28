@@ -80,7 +80,6 @@ KOKKOSKERNELS_ADD_OPTION_AND_DEFINE(
   "1")
 
 
-
 # Enable experimental features of KokkosKernels if set at configure
 # time. Default is no.
 KOKKOSKERNELS_ADD_OPTION_AND_DEFINE(
@@ -88,6 +87,40 @@ KOKKOSKERNELS_ADD_OPTION_AND_DEFINE(
   HAVE_KOKKOSKERNELS_EXPERIMENTAL
   "Enable building and installation of experimental KokkosKernels features. Default: OFF"
   OFF)
+
+KOKKOSKERNELS_ADD_OPTION(
+ ENABLE_KERNELS
+ "ALL"
+ STRING
+ "Selectively enable only the kernels in this list. Default: ALL"
+)
+
+KOKKOSKERNELS_ADD_OPTION(
+ DISABLE_KERNELS
+ "NONE"
+ STRING
+ "Selectively disable only the kernels in this list. Default: NONE"
+)
+
+#Activate specific kernels (or all)
+INCLUDE(cmake/enabled_kernels.cmake)
+SET_KERNEL_ENABLE_VALUES(ON  NAMES ${KOKKOSKERNELS_ENABLE_KERNELS})
+SET_KERNEL_ENABLE_VALUES(OFF NAMES ${KOKKOSKERNELS_DISABLE_KERNELS})
+ENABLE_KERNEL_DEPENDENCIES()
+
+SET_CATEGORY_ENABLE_VALUES(Sparse
+    SPGEMM_NUMERIC
+    SPGEMM_SYMBOLIC
+    SPILUK_NUMERIC
+    SPILUK_SYMBOLIC
+    SPMV
+    SPMV_MV
+    SPMV_MV_STRUCT
+    SPMV_STRUCT
+    SPTRSV_SOLVE
+    SPTRSV_SYMBOLIC
+)
+  
 
 # Define what execution spaces KokkosKernels enables.
 # KokkosKernels may enable fewer execution spaces than

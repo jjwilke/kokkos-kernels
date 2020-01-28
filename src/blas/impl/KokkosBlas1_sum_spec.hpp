@@ -101,8 +101,10 @@ struct sum_eti_spec_avail {
 
 // Include the actual specialization declarations
 #include<KokkosBlas1_sum_tpl_spec_avail.hpp>
+#ifdef KOKKOSKERNELS_ENABLE_SUM
 #include<generated_specializations_hpp/KokkosBlas1_sum_eti_spec_avail.hpp>
 #include<generated_specializations_hpp/KokkosBlas1_sum_mv_eti_spec_avail.hpp>
+#endif
 
 namespace KokkosBlas {
 namespace Impl {
@@ -259,7 +261,9 @@ template struct Sum< \
          2, false, true>;
 
 #include<KokkosBlas1_sum_tpl_spec_decl.hpp>
+#ifdef KOKKOSKERNELS_ENABLE_SUM
 #include<generated_specializations_hpp/KokkosBlas1_sum_eti_spec_decl.hpp>
 #include<generated_specializations_hpp/KokkosBlas1_sum_mv_eti_spec_decl.hpp>
+#endif
 
 #endif // KOKKOSBLAS1_SUM_SPEC_HPP_

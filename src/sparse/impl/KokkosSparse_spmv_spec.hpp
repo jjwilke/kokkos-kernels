@@ -114,8 +114,10 @@ struct spmv_mv_eti_spec_avail {
 
 // Include the actual specialization declarations
 #include<KokkosSparse_spmv_tpl_spec_avail.hpp>
+#ifdef KOKKOSKERNELS_ENABLE_SPMV
 #include<generated_specializations_hpp/KokkosSparse_spmv_eti_spec_avail.hpp>
 #include<generated_specializations_hpp/KokkosSparse_spmv_mv_eti_spec_avail.hpp>
+#endif
 
 namespace KokkosSparse {
 namespace Impl {
@@ -432,7 +434,9 @@ struct SPMV_MV<AT, AO, AD, AM, AS,
          Kokkos::MemoryTraits<Kokkos::Unmanaged>, std::is_integral<typename std::decay<SCALAR_TYPE>::type>::value, false, true >;
 
 #include<KokkosSparse_spmv_tpl_spec_decl.hpp>
+#ifdef KOKKOSKERNELS_ENABLE_SPMV
 #include<generated_specializations_hpp/KokkosSparse_spmv_eti_spec_decl.hpp>
 #include<generated_specializations_hpp/KokkosSparse_spmv_mv_eti_spec_decl.hpp>
+#endif
 
 #endif // KOKKOS_BLAS1_MV_IMPL_DOT_HPP_

@@ -101,8 +101,10 @@ struct update_eti_spec_avail {
 
 // Include the actual specialization declarations
 #include<KokkosBlas1_update_tpl_spec_avail.hpp>
+#ifdef KOKKOSKERNELS_ENABLE_UPDATE
 #include<generated_specializations_hpp/KokkosBlas1_update_eti_spec_avail.hpp>
 #include<generated_specializations_hpp/KokkosBlas1_update_mv_eti_spec_avail.hpp>
+#endif
 
 namespace KokkosBlas {
 namespace Impl {
@@ -367,7 +369,9 @@ template struct Update< \
 
 
 #include<KokkosBlas1_update_tpl_spec_decl.hpp>
+#ifdef KOKKOSKERNELS_ENABLE_UPDATE
 #include<generated_specializations_hpp/KokkosBlas1_update_eti_spec_decl.hpp>
 #include<generated_specializations_hpp/KokkosBlas1_update_mv_eti_spec_decl.hpp>
+#endif
 
 #endif // KOKKOSBLAS1_UPDATE_SPEC_HPP_

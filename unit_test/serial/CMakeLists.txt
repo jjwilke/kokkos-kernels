@@ -1,0 +1,156 @@
+
+#APPEND_GLOB(SERIAL_BLAS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/serial/Test_Serial_Blas*.cpp)
+#APPEND_GLOB(SERIAL_SPARSE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/serial/Test_Serial_Sparse*.cpp)
+#APPEND_GLOB(SERIAL_GRAPH_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/serial/Test_Serial_Graph*.cpp)
+#APPEND_GLOB(SERIAL_COMMON_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/serial/Test_Serial_Common*.cpp)
+
+KOKKOSKERNELS_ADD_ENABLED_TESTS(common_serial
+  COMMON
+    Test_Serial_Common_ArithTraits.cpp
+    Test_Serial_Common_float128.cpp
+    Test_Serial_Common_set_bit_count.cpp
+    Test_Serial_Common_Sorting.cpp
+)
+
+KOKKOSKERNELS_ADD_ENABLED_TESTS(graph_serial
+  GRAPH_DISTANCE1COLOR
+    Test_Serial_Graph_graph_color_deterministic.cpp
+  GRAPH_DISTANCE2COLOR
+    Test_Serial_Graph_graph_color_d2.cpp
+  GRAPH_COLOR
+    Test_Serial_Graph_graph_color.cpp
+  GRAPH_TRIANGLE
+  GAUSS_SEIDEL_APPLY
+    Test_Serial_Sparse_block_gauss_seidel_apply.cpp
+    Test_Serial_Sparse_gauss_seidel_apply.cpp
+)
+
+KOKKOSKERNELS_ADD_ENABLED_TESTS(sparse_serial
+  SPGEMM_NUMERIC
+    Test_Serial_Sparse_spgemm_numeric.cpp
+  SPGEMM_SYMBOLIC
+    Test_Serial_Sparse_spgemm_symblic.cpp
+  SPILUK_NUMERIC
+    Test_Serial_Sparse_spiluk_numeric.cpp
+  SPILUK_SYMBOLIC
+    Test_Serial_Sparse_spiluk_symbolic.cpp
+  TRSV
+    Test_Serial_Sparse_trsv.cpp
+  SPTRSV_SOLVE
+    Test_Serial_Sparse_sptrsv_solve.cpp
+  SPTRSV_SYMBOLIC
+    Test_Serial_Sparse_sptrsv_symbolic.cpp
+  SPADD_NUMERIC
+    Test_Serial_Sparse_spadd_numeric.cpp
+  SPADD_SYMBOLIC
+    Test_Serial_Sparse_spadd_symbolic.cpp
+  SPMV
+    Test_Serial_Sparse_spmv.cpp
+  GAUSS_SEIDEL_NUMERIC
+    Test_Serial_Sparse_block_gauss_seidel_numeric.cpp
+    Test_Serial_Sparse_gauss_seidel_numeric.cpp
+  GAUSS_SEIDEL_SYMBOLIC
+    Test_Serial_Sparse_block_gauss_seidel_symbolic.cpp
+    Test_Serial_Sparse_gauss_seidel_symbolic.cpp
+  COMMON
+    Test_Serial_Sparse_CrsMatrix.cpp
+    Test_Serial_Sparse_findRelOffset.cpp
+    Test_Serial_Sparse_replaceSumInto.cpp
+    Test_Serial_Sparse_replaceSumIntoLonger.cpp
+)
+
+KOKKOSKERNELS_ADD_ENABLED_TESTS(blas_serial
+  ABS
+    Test_Serial_Blas1_abs.cpp
+    Test_Serial_Blas1_team_abs.cpp
+  DOT
+    Test_Serial_Blas1_dot.cpp
+    Test_Serial_Blas1_team_dot.cpp
+  AXPBY
+    Test_Serial_Blas1_axpby.cpp
+    Test_Serial_Blas1_axpy.cpp
+    Test_Serial_Blas1_team_axpby.cpp
+    Test_Serial_Blas1_team_axpy.cpp
+  IAMAX
+    Test_Serial_Blas1_iamax.cpp
+  MULT
+    Test_Serial_Blas1_mult.cpp
+    Test_Serial_Blas1_team_mult.cpp
+  NRM1
+    Test_Serial_Blas1_nrm1.cpp
+  NRM2
+    Test_Serial_Blas1_nrm2.cpp
+    Test_Serial_Blas1_nrm2_squared.cpp
+    Test_Serial_Blas1_team_nrm2.cpp
+  NRMINF
+    Test_Serial_Blas1_nrminf.cpp
+  RECIPROCAL
+    Test_Serial_Blas1_reciprocal.cpp
+  SCAL
+    Test_Serial_Blas1_scal.cpp
+    Test_Serial_Blas1_team_scal.cpp
+  SUM
+    Test_Serial_Blas1_sum.cpp
+  UPDATE
+    Test_Serial_Blas1_team_update.cpp
+    Test_Serial_Blas1_update.cpp
+  GEMV
+    Test_Serial_Blas2_gemv.cpp
+    Test_Serial_Blas2_team_gemv.cpp
+  GEMM
+    Test_Serial_Blas3_gemm.cpp
+  TRSM
+    Test_Serial_Blas3_trsm.cpp
+  GESV
+    Test_Serial_Blas_gesv.cpp
+  COMMON
+    Test_Serial_Blas1_asum.cpp
+)
+
+KOKKOSKERNELS_ADD_ENABLED_TESTS(batched_serial
+  BATCHED_GEMM 
+    Test_Serial_Batched_SerialGemm_Complex.cpp
+    Test_Serial_Batched_SerialGemm_Real.cpp
+    Test_Serial_Batched_TeamGemm_Complex.cpp
+    Test_Serial_Batched_TeamGemm_Real.cpp
+  BATCHED_GEMV
+    Test_Serial_Batched_SerialGemv_Complex.cpp
+    Test_Serial_Batched_SerialGemv_Real.cpp
+    Test_Serial_Batched_TeamGemv_Complex.cpp
+    Test_Serial_Batched_TeamGemv_Real.cpp
+  BATCHED_LU
+    Test_Serial_Batched_SerialInverseLU_Complex.cpp
+    Test_Serial_Batched_SerialInverseLU_Real.cpp
+    Test_Serial_Batched_SerialLU_Complex.cpp
+    Test_Serial_Batched_SerialLU_Real.cpp
+    Test_Serial_Batched_SerialSolveLU_Complex.cpp
+    Test_Serial_Batched_SerialSolveLU_Real.cpp
+    Test_Serial_Batched_TeamInverseLU_Complex.cpp
+    Test_Serial_Batched_TeamInverseLU_Real.cpp
+    Test_Serial_Batched_TeamLU_Complex.cpp
+    Test_Serial_Batched_TeamLU_Real.cpp
+    Test_Serial_Batched_TeamSolveLU_Complex.cpp
+    Test_Serial_Batched_TeamSolveLU_Real.cpp
+  BATCHED_TRSM
+    Test_Serial_Batched_SerialTrsm_Complex.cpp
+    Test_Serial_Batched_SerialTrsm_Real.cpp
+    Test_Serial_Batched_TeamTrsm_Complex.cpp
+    Test_Serial_Batched_TeamTrsm_Real.cpp
+  BATCHED_TRSV
+    Test_Serial_Batched_SerialTrsv_Complex.cpp
+    Test_Serial_Batched_SerialTrsv_Real.cpp
+    Test_Serial_Batched_TeamTrsv_Complex.cpp
+    Test_Serial_Batched_TeamTrsv_Real.cpp
+  COMMON
+    Test_Serial_Batched_SerialEigendecomposition_Real.cpp
+    Test_Serial_Batched_SerialMatUtil_Complex.cpp
+    Test_Serial_Batched_SerialMatUtil_Real.cpp
+    Test_Serial_Batched_TeamMatUtil_Complex.cpp
+    Test_Serial_Batched_TeamMatUtil_Real.cpp
+    Test_Serial_Batched_VectorArithmatic.cpp
+    Test_Serial_Batched_VectorLogical.cpp
+    Test_Serial_Batched_VectorMath.cpp
+    Test_Serial_Batched_VectorMisc.cpp
+    Test_Serial_Batched_VectorRelation.cpp
+    Test_Serial_Batched_VectorView.cpp
+)

@@ -97,8 +97,11 @@ struct abs_eti_spec_avail {
 
 // Include the actual specialization declarations
 #include<KokkosBlas1_abs_tpl_spec_avail.hpp>
+
+#ifdef KOKKOSKERNELS_ENABLE_ABS
 #include<generated_specializations_hpp/KokkosBlas1_abs_eti_spec_avail.hpp>
 #include<generated_specializations_hpp/KokkosBlas1_abs_mv_eti_spec_avail.hpp>
+#endif
 
 namespace KokkosBlas {
 namespace Impl {
@@ -249,7 +252,9 @@ template struct Abs< \
          2, false, true>;
 
 #include<KokkosBlas1_abs_tpl_spec_decl.hpp>
+#ifdef KOKKOSKERNELS_ENABLE_ABS
 #include<generated_specializations_hpp/KokkosBlas1_abs_eti_spec_decl.hpp>
 #include<generated_specializations_hpp/KokkosBlas1_abs_mv_eti_spec_decl.hpp>
+#endif
 
 #endif // KOKKOS_BLAS1_MV_IMPL_ABS_HPP_
