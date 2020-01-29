@@ -227,7 +227,7 @@ KOKKOSKERNELS_ETI(Blas1 reciprocal_mv reciprocal
   TYPE_LISTS FLOATS LAYOUTS DEVICES
 )
 
-KOKKOSKERNELS_ETI(Sparse sptrsv_solve sptrsv_solve
+KOKKOSKERNELS_ETI(Sparse sptrsv_solve sptrsv
   HEADER_LIST HEADERS
   SOURCE_LIST SOURCES
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES
@@ -257,35 +257,41 @@ KOKKOSKERNELS_ETI(Sparse spmv_mv spmv
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES
 )
 
-KOKKOSKERNELS_ETI(Sparse spgemm_symbolic spgemm_symbolic
+KOKKOSKERNELS_ETI(Sparse spgemm_symbolic spgemm
   HEADER_LIST HEADERS
   SOURCE_LIST SOURCES
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES_W_SLOW_SPACE
 )
 
-KOKKOSKERNELS_ETI(Sparse spgemm_numeric spgemm_numeric
+KOKKOSKERNELS_ETI(Sparse spgemm_numeric spgemm
   HEADER_LIST HEADERS
   SOURCE_LIST SOURCES
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES_W_SLOW_SPACE
 )
 
-KOKKOSKERNELS_ETI(Sparse spiluk_symbolic spiluk_symbolic
+KOKKOSKERNELS_ETI(Sparse spiluk_symbolic spiluk
   HEADER_LIST HEADERS
   SOURCE_LIST SOURCES
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES
 )
 
-KOKKOSKERNELS_ETI(Sparse spiluk_numeric spiluk_numeric
+KOKKOSKERNELS_ETI(Sparse spiluk_numeric spiluk
   HEADER_LIST HEADERS
   SOURCE_LIST SOURCES
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES
 )
 
-KOKKOSKERNELS_ETI(Sparse sptrsv_symbolic sptrsv_symbolic
+KOKKOSKERNELS_ETI(Sparse sptrsv_symbolic sptrsv
   HEADER_LIST HEADERS
   SOURCE_LIST SOURCES
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES
 )
+
+#KOKKOSKERNELS_ETI(Sparse trsm trsm
+#  HEADER_LIST HEADERS
+#  SOURCE_LIST SOURCES
+#  TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES
+#)
 
 KOKKOSKERNELS_ETI(Sparse trsv trsv
   HEADER_LIST HEADERS
@@ -293,19 +299,19 @@ KOKKOSKERNELS_ETI(Sparse trsv trsv
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES
 )
 
-KOKKOSKERNELS_ETI(Sparse gauss_seidel_symbolic gauss_seidel_symbolic
+KOKKOSKERNELS_ETI(Sparse gauss_seidel_symbolic gauss_seidel
   HEADER_LIST HEADERS
   SOURCE_LIST SOURCES
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES_W_SLOW_SPACE
 )
 
-KOKKOSKERNELS_ETI(Sparse gauss_seidel_numeric gauss_seidel_numeric
+KOKKOSKERNELS_ETI(Sparse gauss_seidel_numeric gauss_seidel
   HEADER_LIST HEADERS
   SOURCE_LIST SOURCES
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES_W_SLOW_SPACE
 )
 
-KOKKOSKERNELS_ETI(Sparse gauss_seidel_apply gauss_seidel_apply
+KOKKOSKERNELS_ETI(Sparse gauss_seidel_apply gauss_seidel
   HEADER_LIST HEADERS
   SOURCE_LIST SOURCES
   TYPE_LISTS FLOATS ORDINALS OFFSETS LAYOUTS DEVICES_W_SLOW_SPACE
@@ -332,6 +338,15 @@ KOKKOSKERNELS_ADD_LIBRARY(
 # Force the specializations to be installed in a subdirectory
 APPEND_GLOB(HEADERS_GENERATED ${CMAKE_CURRENT_SOURCE_DIR}/impl/generated_specializations_hpp/*.hpp)
 INSTALL(FILES ${HEADERS_GENERATED} DESTINATION ${KOKKOSKERNELS_HEADER_INSTALL_DIR}/generated_specializations_hpp/)
+
+IF (KOKKOSKERNELS_ENABLE_JIT)
+  #The flag needs to be public since all downstream projects
+  #will now be JIT projects
+  TARGET_COMPILE_OPTIONS(kokkoskernels PUBLIC -fjit)
+  #we don't require a version of CMake high enough
+  #for link options support
+  TARGET_LINK_LIBRARIES(kokkoskernels PUBLIC -fjit)
+ENDIF()
 
 IF (KOKKOSKERNELS_HAS_TRILINOS)
   #no linking commands required - tribits does this

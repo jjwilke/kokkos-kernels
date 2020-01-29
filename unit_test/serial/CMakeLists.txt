@@ -20,38 +20,24 @@ KOKKOSKERNELS_ADD_ENABLED_TESTS(graph_serial
   GRAPH_COLOR
     Test_Serial_Graph_graph_color.cpp
   GRAPH_TRIANGLE
-  GAUSS_SEIDEL_APPLY
-    Test_Serial_Sparse_block_gauss_seidel_apply.cpp
-    Test_Serial_Sparse_gauss_seidel_apply.cpp
 )
 
 KOKKOSKERNELS_ADD_ENABLED_TESTS(sparse_serial
-  SPGEMM_NUMERIC
-    Test_Serial_Sparse_spgemm_numeric.cpp
-  SPGEMM_SYMBOLIC
-    Test_Serial_Sparse_spgemm_symblic.cpp
-  SPILUK_NUMERIC
-    Test_Serial_Sparse_spiluk_numeric.cpp
-  SPILUK_SYMBOLIC
-    Test_Serial_Sparse_spiluk_symbolic.cpp
+  SPGEMM
+    Test_Serial_Sparse_spgemm.cpp
+  SPILUK
+    Test_Serial_Sparse_spiluk.cpp
   TRSV
     Test_Serial_Sparse_trsv.cpp
-  SPTRSV_SOLVE
-    Test_Serial_Sparse_sptrsv_solve.cpp
-  SPTRSV_SYMBOLIC
-    Test_Serial_Sparse_sptrsv_symbolic.cpp
-  SPADD_NUMERIC
-    Test_Serial_Sparse_spadd_numeric.cpp
-  SPADD_SYMBOLIC
-    Test_Serial_Sparse_spadd_symbolic.cpp
+  SPTRSV
+    Test_Serial_Sparse_sptrsv.cpp
+  SPADD
+    Test_Serial_Sparse_spadd.cpp
   SPMV
     Test_Serial_Sparse_spmv.cpp
-  GAUSS_SEIDEL_NUMERIC
-    Test_Serial_Sparse_block_gauss_seidel_numeric.cpp
-    Test_Serial_Sparse_gauss_seidel_numeric.cpp
-  GAUSS_SEIDEL_SYMBOLIC
-    Test_Serial_Sparse_block_gauss_seidel_symbolic.cpp
-    Test_Serial_Sparse_gauss_seidel_symbolic.cpp
+  GAUSS_SEIDEL
+    Test_Serial_Sparse_block_gauss_seidel.cpp
+    Test_Serial_Sparse_gauss_seidel.cpp
   COMMON
     Test_Serial_Sparse_CrsMatrix.cpp
     Test_Serial_Sparse_findRelOffset.cpp
@@ -99,8 +85,8 @@ KOKKOSKERNELS_ADD_ENABLED_TESTS(blas_serial
     Test_Serial_Blas2_team_gemv.cpp
   GEMM
     Test_Serial_Blas3_gemm.cpp
-  TRSM
-    Test_Serial_Blas3_trsm.cpp
+#  TRSM
+#    Test_Serial_Blas3_trsm.cpp
   GESV
     Test_Serial_Blas_gesv.cpp
   COMMON

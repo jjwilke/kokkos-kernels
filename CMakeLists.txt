@@ -120,7 +120,19 @@ SET_CATEGORY_ENABLE_VALUES(Sparse
     SPTRSV_SOLVE
     SPTRSV_SYMBOLIC
 )
-  
+
+KOKKOSKERNELS_ADD_OPTION(
+  ENABLE_JIT
+  OFF
+  BOOL
+  "Enable JIT compilation of kernels instead of ETI"
+)
+IF (KOKKOSKERNELS_ENABLE_JIT)
+  IF (KOKKOSKERNELS_TEST_ETI_ONLY)
+    MESSAGE(WARNING "JIT is enabled - forcing TEST_ETI_ONLY off")
+  ENDIF()
+  SET(KOKKOSKERNELS_TEST_ETI_ONLY OFF)
+ENDIF()
 
 # Define what execution spaces KokkosKernels enables.
 # KokkosKernels may enable fewer execution spaces than
