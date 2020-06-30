@@ -245,7 +245,9 @@ void matvec(typename YVector::const_value_type& alpha,
                                                                                       vector_length);
   int64_t worksets = (y.extent(0) + rows_per_team-1) / rows_per_team;
 
-  KokkosSparse::Impl::SPMV_Functor<AMatrix,XVector,YVector,1,false> func (alpha,A,x,beta,y,rows_per_team);
+  using namespace KokkosSparse::Impl;
+
+  SPMV_Functor<AMatrix,XVector,YVector,NoTransposeMode,BetaOne,SmallA> func (alpha,A,x,beta,y,rows_per_team);
 
   if(print_lp) {
     std::cout << "worksets=" << worksets << ", team_size=" << team_size << ", vector_length=" << vector_length << std::endl;

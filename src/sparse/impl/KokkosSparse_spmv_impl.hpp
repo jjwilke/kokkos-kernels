@@ -74,55 +74,73 @@ struct GetCoeffView<Kokkos::View<IT*,IL,ID,IM,IS>,DeviceType> {
   }
 };
 
-
-// This TransposeFunctor is functional, but not necessarily performant.
 template<class AMatrix,
          class XVector,
          class YVector,
          class Mode,
          class Beta,
-         class... Ignore>
-struct SPMV_Transpose_Functor {
+         class SizeA>
+struct SPMV_Functor;
+
+template<class AMatrix,
+         class XVector,
+         class YVector,
+         class Mode,
+         class Beta,
+         class SizeA>
+struct SPMV_Functor {
   typedef typename AMatrix::execution_space            execution_space;
   typedef typename AMatrix::non_const_ordinal_type     ordinal_type;
   typedef typename AMatrix::non_const_value_type       value_type;
+  typedef typename YVector::non_const_value_type       y_value_type;
   typedef typename Kokkos::TeamPolicy<execution_space> team_policy;
   typedef typename team_policy::member_type            team_member;
   typedef Kokkos::Details::ArithTraits<value_type>     ATV;
-  typedef typename YVector::non_const_value_type       coefficient_type;
-  typedef typename YVector::non_const_value_type       y_value_type;
 
-  const coefficient_type alpha;
-  AMatrix m_A;
+  const value_type alpha;
+  AMatrix  m_A;
   XVector m_x;
-  const coefficient_type beta;
+  const value_type beta;
   YVector m_y;
-  const ordinal_type rows_per_thread;
+  const ordinal_type rows_per_team;
 
-  constexpr const char* str() const {
-    return "KokkosSparse::spmv<Transpose>";
+  SPMV_Functor (const value_type alpha_,
+                const AMatrix m_A_,
+                const XVector m_x_,
+                const value_type beta_,
+                const YVector m_y_,
+                const int rows_per_team_) :
+     alpha (alpha_), m_A (m_A_), m_x (m_x_),
+     beta (beta_), m_y (m_y_),
+     rows_per_team (rows_per_team_)
+  {
+    static_assert (static_cast<int> (XVector::rank) == 1,
+                   "XVector must be a rank 1 View.");
+    static_assert (static_cast<int> (YVector::rank) == 1,
+                   "YVector must be a rank 1 View.");
   }
 
-  SPMV_Transpose_Functor (const coefficient_type& alpha_,
-                          const AMatrix& m_A_,
-                          const XVector& m_x_,
-                          const coefficient_type& beta_,
-                          const YVector& m_y_,
-                          const ordinal_type rows_per_thread_) :
-    alpha (alpha_), m_A (m_A_), m_x (m_x_),
-    beta (beta_), m_y (m_y_),
-    rows_per_thread (rows_per_thread_)
-  {}
+  template <class M=Mode>
+  constexpr const char*
+  str() const {
+    if (Mode::transpose){
+      return "KokkosSparse::spmv<Transpose>";
+    } else {
+      return "KokkosSparse::spmv<NoTranspose>";
+    }
+  }
 
-  KOKKOS_INLINE_FUNCTION void
+  template <class M=Mode>
+  KOKKOS_INLINE_FUNCTION
+  typename std::enable_if<M::transpose>::type
   operator() (const team_member& dev) const
   {
     // This should be a thread loop as soon as we can use C++11
-    for (ordinal_type loop = 0; loop < rows_per_thread; ++loop) {
+    for (ordinal_type loop = 0; loop < rows_per_team; ++loop) {
       // iRow represents a row of the matrix, so its correct type is
       // ordinal_type.
       const ordinal_type iRow = (static_cast<ordinal_type> (dev.league_rank() * dev.team_size() + dev.team_rank()))
-                                * rows_per_thread + loop;
+                                * rows_per_team + loop;
       if (iRow >= m_A.numRows ()) {
         return;
       }
@@ -149,52 +167,11 @@ struct SPMV_Transpose_Functor {
       }
     }
   }
-};
 
-template<class AMatrix,
-         class XVector,
-         class YVector,
-         class Mode,
-         class Beta,
-         class... Ignore>
-struct SPMV_Functor {
-  typedef typename AMatrix::execution_space            execution_space;
-  typedef typename AMatrix::non_const_ordinal_type     ordinal_type;
-  typedef typename AMatrix::non_const_value_type       value_type;
-  typedef typename Kokkos::TeamPolicy<execution_space> team_policy;
-  typedef typename team_policy::member_type            team_member;
-  typedef Kokkos::Details::ArithTraits<value_type>     ATV;
-
-  const value_type alpha;
-  AMatrix  m_A;
-  XVector m_x;
-  const value_type beta;
-  YVector m_y;
-
-  constexpr const char* str() const {
-    return "KokkosSparse::spmv<NoTranspose>";
-  }
-
-  const ordinal_type rows_per_team;
-
-  SPMV_Functor (const value_type alpha_,
-                const AMatrix m_A_,
-                const XVector m_x_,
-                const value_type beta_,
-                const YVector m_y_,
-                const int rows_per_team_) :
-     alpha (alpha_), m_A (m_A_), m_x (m_x_),
-     beta (beta_), m_y (m_y_),
-     rows_per_team (rows_per_team_)
-  {
-    static_assert (static_cast<int> (XVector::rank) == 1,
-                   "XVector must be a rank 1 View.");
-    static_assert (static_cast<int> (YVector::rank) == 1,
-                   "YVector must be a rank 1 View.");
-  }
-
+  template <class M=Mode>
   KOKKOS_INLINE_FUNCTION
-  void operator() (const team_member& dev) const
+  typename std::enable_if<!M::transpose>::type
+  operator() (const team_member& dev) const
   {
     typedef typename YVector::non_const_value_type y_value_type;
 
@@ -345,19 +322,12 @@ template <class AMatrix, class XVector, class YVector, class... Props>
 struct SpecializeSpmvOp {
 
   using coefficient_type =  typename YVector::non_const_value_type;
-  using no_transpose_type = SPMV_Transpose_Functor<AMatrix,XVector,YVector,Props...>;
-  using transpose_type = SPMV_Functor<AMatrix,XVector,YVector,Props...>;
 
-  template <enum PropertyIndex Index=SpmvMode>
-  static typename std::enable_if<GetProperty<Index,Props...>::transpose,transpose_type>::type
-  get_op(const TeamConfig& cfg, coefficient_type alpha, coefficient_type beta, const AMatrix& A, const XVector& x, const YVector& y){
-    return transpose_type(alpha, A, x, beta, y, cfg.rows_per_team);
-  }
+  using op_type = SPMV_Functor<AMatrix, XVector, YVector, Props...>;
 
-  template <enum PropertyIndex Index=SpmvMode>
-  static typename std::enable_if<!GetProperty<Index,Props...>::transpose,no_transpose_type>::type
-  get_op(const TeamConfig& cfg, coefficient_type alpha, coefficient_type beta, const AMatrix& A, const XVector& x, const YVector& y){
-    return no_transpose_type(alpha, A, x, beta, y, cfg.rows_per_team);
+  static op_type get_op(const TeamConfig& cfg, coefficient_type alpha, coefficient_type beta, 
+                        const AMatrix& A, const XVector& x, const YVector& y){
+    return op_type(alpha, A, x, beta, y, cfg.rows_per_team);
   }
 };
 
@@ -366,32 +336,16 @@ struct SpecializeSpmvTeamPolicy {
 
   using execution_space = typename AMatrix::execution_space;
   using coefficient_type =  typename YVector::non_const_value_type;
-  using no_transpose_type = SPMV_Transpose_Functor<AMatrix,XVector,YVector,Props...>;
-  using transpose_type = SPMV_Functor<AMatrix,XVector,YVector,Props...>;
 
   using dynamic_type = Kokkos::TeamPolicy<execution_space, Kokkos::Schedule<Kokkos::Dynamic>>;
-  using static_type = Kokkos::TeamPolicy<execution_space, Kokkos::Schedule<Kokkos::Dynamic>>;
+  using static_type = Kokkos::TeamPolicy<execution_space, Kokkos::Schedule<Kokkos::Static>>;
+  using team_type = typename std::conditional<GetProperty<SpmvAx,Props...>::dynamic_teams,dynamic_type,static_type>::type;
 
-  template <enum PropertyIndex Index = SpmvAx>
-  static typename std::enable_if<GetProperty<Index,Props...>::dynamic_teams,dynamic_type>::type
-  get_policy(const TeamConfig& cfg, coefficient_type alpha, coefficient_type beta, const AMatrix& A, const XVector& x, const YVector& y){
-    return get_team_policy<dynamic_type>(cfg, alpha, beta, A, x, y);
-  }
-
-  template <enum PropertyIndex Index = SpmvAx>
-  static typename std::enable_if<!GetProperty<Index,Props...>::dynamic_teams,static_type>::type
-  get_policy(const TeamConfig& cfg, coefficient_type alpha, coefficient_type beta, const AMatrix& A, const XVector& x, const YVector& y){
-    return get_team_policy<static_type>(cfg, alpha, beta, A, x, y);
-  }
-
- private:
-  template <class TeamType>
-  static TeamType get_team_policy(const TeamConfig& cfg, coefficient_type alpha, coefficient_type beta, const AMatrix& A, const XVector& x, const YVector& y){
-
+  static team_type get_policy(const TeamConfig& cfg, coefficient_type alpha, coefficient_type beta, const AMatrix& A, const XVector& x, const YVector& y){
     if (cfg.team_size < 0){
-      return TeamType(cfg.worksets,Kokkos::AUTO,cfg.vector_length);
+      return team_type(cfg.worksets,Kokkos::AUTO,cfg.vector_length);
     } else {
-      return TeamType(cfg.worksets,cfg.team_size,cfg.vector_length);
+      return team_type(cfg.worksets,cfg.team_size,cfg.vector_length);
     }
   }
 
