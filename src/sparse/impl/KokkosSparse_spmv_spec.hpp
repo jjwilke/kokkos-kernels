@@ -148,7 +148,7 @@ template<class AT, class AO, class AD, class AM, class AS,
              spmv_eti_spec_avail< AT, AO, AD, AM, AS,
                                   XT, XL, XD, XM,
                                   YT, YL, YD, YM>::value >
-struct SPMV{
+struct SPMV {
   typedef CrsMatrix<AT,AO,AD,AM,AS> AMatrix;
   typedef Kokkos::View<XT,XL,XD,XM> XVector;
   typedef Kokkos::View<YT,YL,YD,YM> YVector;
@@ -263,20 +263,11 @@ struct SPMV < AT, AO, AD, AM, AS,
       return;
     }
 
-    if (beta == KAT::zero ()) {
-      spmv_beta<AMatrix, XVector, YVector, 0> (mode, alpha, A, x, beta, y);
-    }
-    else if (beta == KAT::one ()) {
-      spmv_beta<AMatrix, XVector, YVector, 1> (mode, alpha, A, x, beta, y);
-    }
-    else if (beta == -KAT::one ()) {
-      spmv_beta<AMatrix, XVector, YVector, -1> (mode, alpha, A, x, beta, y);
-    }
-    else {
-      spmv_beta<AMatrix, XVector, YVector, 2> (mode, alpha, A, x, beta, y);
-    }
+    // the zero is just a sentinel value saying "start specialize from beginning"
+    SpecializeSpmv<PropertyIndex(0)>()(mode, alpha, beta, A, x, y);
   }
 };
+
 
 //! Full specialization of spmv_mv for single vectors (2-D Views).
 // Unification layer
