@@ -165,8 +165,7 @@ void runGS(string matrixPath, string devName, bool symmetric, bool twostage, boo
     typedef Kokkos::Details::ArithTraits<scalar_t> KAT;
     scalar_t alpha = KAT::one();
     scalar_t beta = -KAT::one();
-    KokkosSparse::spmv<scalar_t, crsmat_t, scalar_view_t, scalar_t, scalar_view_t>
-      ("N", alpha, A, x, beta, res);
+    KokkosSparse::spmv ("N", alpha, A, x, beta, res);
     double resnorm = KokkosBlas::nrm2(res);
     //note: this still works if the solution diverges
     scaledRes.push_back(resnorm / bnorm);

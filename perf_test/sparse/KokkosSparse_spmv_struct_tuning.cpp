@@ -237,15 +237,11 @@ void matvec(typename YVector::const_value_type& alpha,
   if (A.numRows () <= static_cast<ordinal_type> (0)) {
     return;
   }
+  using namespace KokkosSparse::Impl;
 
-  int64_t rows_per_team = KokkosSparse::Impl::spmv_launch_parameters<execution_space>(A.numRows(),
-                                                                                      A.nnz(),
-                                                                                      rows_per_thread,
-                                                                                      team_size,
-                                                                                      vector_length);
+  int64_t rows_per_team = spmv_launch_parameters(A, rows_per_thread, team_size, vector_length);
   int64_t worksets = (y.extent(0) + rows_per_team-1) / rows_per_team;
 
-  using namespace KokkosSparse::Impl;
 
   SPMV_Functor<AMatrix,XVector,YVector,NoTransposeMode,BetaOne,SmallA> func (alpha,A,x,beta,y,rows_per_team);
 

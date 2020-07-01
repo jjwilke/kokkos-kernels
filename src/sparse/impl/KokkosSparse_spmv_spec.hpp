@@ -48,6 +48,18 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_ArithTraits.hpp>
 
+namespace KokkosSparse {
+
+struct NullTuner { };
+
+template <class Policy>
+struct TeamTuner {
+  int vector_length;
+  int team_size;
+};
+
+}
+
 #include "KokkosSparse_CrsMatrix.hpp"
 // Include the actual functors
 #if !defined(KOKKOSKERNELS_ETI_ONLY) || KOKKOSKERNELS_IMPL_COMPILE_LIBRARY 
@@ -59,7 +71,7 @@ namespace Impl {
 // Specialization struct which defines whether a specialization exists
 template<class AT, class AO, class AD, class AM, class AS,
          class XT, class XL, class XD, class XM,
-         class YT, class YL, class YD, class YM>
+         class YT, class YL, class YD, class YM, class Tuner>
 struct spmv_eti_spec_avail {
   enum : bool { value = false };
 };
@@ -90,7 +102,8 @@ struct spmv_mv_eti_spec_avail {
                   SCALAR_TYPE*, \
                   LAYOUT_TYPE, \
                   Kokkos::Device<EXEC_SPACE_TYPE, MEM_SPACE_TYPE>, \
-                  Kokkos::MemoryTraits<Kokkos::Unmanaged> > \
+                  Kokkos::MemoryTraits<Kokkos::Unmanaged>, \
+                  NullTuner> \
     { enum : bool { value = true }; };
 
 
@@ -140,6 +153,7 @@ namespace Impl {
 template<class AT, class AO, class AD, class AM, class AS,
          class XT, class XL, class XD, class XM,
          class YT, class YL, class YD, class YM,
+         class Tuner = NullTuner,
          bool tpl_spec_avail =
              spmv_tpl_spec_avail< AT, AO, AD, AM, AS,
                                   XT, XL, XD, XM,
@@ -147,7 +161,8 @@ template<class AT, class AO, class AD, class AM, class AS,
          bool eti_spec_avail =
              spmv_eti_spec_avail< AT, AO, AD, AM, AS,
                                   XT, XL, XD, XM,
-                                  YT, YL, YD, YM>::value >
+                                  YT, YL, YD, YM,
+                                  Tuner>::value >
 struct SPMV {
   typedef CrsMatrix<AT,AO,AD,AM,AS> AMatrix;
   typedef Kokkos::View<XT,XL,XD,XM> XVector;
@@ -160,7 +175,8 @@ struct SPMV {
       const AMatrix& A,
       const XVector& x,
       const coefficient_type& beta,
-      const YVector& y);
+      const YVector& y,
+      Tuner& tuner = Tuner());
 };
 
 // Unification layer
@@ -234,10 +250,14 @@ struct SPMV_MV{
 // Unification layer
 template<class AT, class AO, class AD, class AM, class AS,
          class XT, class XL, class XD, class XM,
-         class YT, class YL, class YD, class YM>
+         class YT, class YL, class YD, class YM,
+         class Tuner>
 struct SPMV < AT, AO, AD, AM, AS,
               XT, XL, XD, XM,
-              YT, YL, YD, YM, false, KOKKOSKERNELS_IMPL_COMPILE_LIBRARY>{
+              YT, YL, YD, YM, 
+              Tuner,
+              false, KOKKOSKERNELS_IMPL_COMPILE_LIBRARY
+             > {
 
   typedef CrsMatrix<AT,AO,AD,AM,AS> AMatrix;
   typedef Kokkos::View<XT,XL,XD,XM> XVector;
@@ -250,10 +270,9 @@ struct SPMV < AT, AO, AD, AM, AS,
       const AMatrix& A,
       const XVector& x,
       const coefficient_type& beta,
-      const YVector& y)
+      const YVector& y,
+      Tuner& tuner)
   {
-    typedef Kokkos::Details::ArithTraits<coefficient_type> KAT;
-
     typedef Kokkos::Details::ArithTraits<coefficient_type> KAT;
 
     if (alpha == KAT::zero ()) {
@@ -264,7 +283,7 @@ struct SPMV < AT, AO, AD, AM, AS,
     }
 
     // the zero is just a sentinel value saying "start specialize from beginning"
-    SpecializeSpmv<PropertyIndex(0)>()(mode, alpha, beta, A, x, y);
+    SpecializeSpmv<PropertyIndex(0)>()(mode, alpha, beta, A, x, y, tuner);
   }
 };
 
@@ -370,7 +389,7 @@ struct SPMV_MV<AT, AO, AD, AM, AS,
          SCALAR_TYPE*, \
          LAYOUT_TYPE, \
          Kokkos::Device<EXEC_SPACE_TYPE, MEM_SPACE_TYPE>, \
-         Kokkos::MemoryTraits<Kokkos::Unmanaged>, false, true >;
+         Kokkos::MemoryTraits<Kokkos::Unmanaged>, NullTuner, false, true >;
 
 
 #define KOKKOSSPARSE_SPMV_ETI_SPEC_INST( SCALAR_TYPE, ORDINAL_TYPE, OFFSET_TYPE, LAYOUT_TYPE, EXEC_SPACE_TYPE, MEM_SPACE_TYPE) \
@@ -387,7 +406,7 @@ struct SPMV_MV<AT, AO, AD, AM, AS,
          SCALAR_TYPE*, \
          LAYOUT_TYPE, \
          Kokkos::Device<EXEC_SPACE_TYPE, MEM_SPACE_TYPE>, \
-         Kokkos::MemoryTraits<Kokkos::Unmanaged>, false, true >;
+         Kokkos::MemoryTraits<Kokkos::Unmanaged>, NullTuner, false, true >;
 
 #define KOKKOSSPARSE_SPMV_MV_ETI_SPEC_DECL( SCALAR_TYPE, ORDINAL_TYPE, OFFSET_TYPE, LAYOUT_TYPE, EXEC_SPACE_TYPE, MEM_SPACE_TYPE ) \
     extern template struct  \

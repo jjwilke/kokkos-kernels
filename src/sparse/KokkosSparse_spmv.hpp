@@ -62,7 +62,7 @@ namespace {
   struct RANK_TWO{};
 }
 
-template <class AlphaType, class AMatrix, class XVector, class BetaType, class YVector>
+template <class AlphaType, class AMatrix, class XVector, class BetaType, class YVector, class Tuner>
 void
 spmv (const char mode[],
       const AlphaType& alpha,
@@ -70,6 +70,7 @@ spmv (const char mode[],
       const XVector& x,
       const BetaType& beta,
       const YVector& y,
+      Tuner& tuner,
       const RANK_ONE)
 {
   // Make sure that both x and y have the same rank.
@@ -149,7 +150,8 @@ spmv (const char mode[],
               typename YVector_Internal::value_type*,
               typename YVector_Internal::array_layout,
               typename YVector_Internal::device_type,
-              typename YVector_Internal::memory_traits>::spmv (mode, alpha, A_i, x_i, beta, y_i);
+              typename YVector_Internal::memory_traits,
+              Tuner>::spmv (mode, alpha, A_i, x_i, beta, y_i, tuner);
 }
 
 
@@ -220,7 +222,7 @@ struct SPMV2D1D<AlphaType, AMatrix, XVector, BetaType, YVector, Kokkos::LayoutRi
   }
 };
 
-template<class AlphaType, class AMatrix, class XVector, class BetaType, class YVector>
+template<class AlphaType, class AMatrix, class XVector, class BetaType, class YVector, class Tuner>
 void
 spmv (const char mode[],
       const AlphaType& alpha,
@@ -228,6 +230,7 @@ spmv (const char mode[],
       const XVector& x,
       const BetaType& beta,
       const YVector& y,
+      Tuner& /*tuner*/,
       const RANK_TWO)
 {
   // Make sure that both x and y have the same rank.
@@ -347,18 +350,28 @@ spmv (const char mode[],
 /// \param y [in/out] Either a single vector (rank-1 Kokkos::View) or
 ///   multivector (rank-2 Kokkos::View).  It must have the same number
 ///   of columns as x.
-template <class AlphaType, class AMatrix, class XVector, class BetaType, class YVector>
+
+template <class AlphaType, class AMatrix, class XVector, class BetaType, class YVector, class Tuner>
 void
-spmv(const char mode[],
+spmv_tuned(const char mode[],
      const AlphaType& alpha,
      const AMatrix& A,
      const XVector& x,
      const BetaType& beta,
-     const YVector& y) {
+     const YVector& y,
+     Tuner& tuner) {
   using RANK_SPECIALISE =
     typename std::conditional<static_cast<int> (XVector::rank) == 2,
                               RANK_TWO, RANK_ONE>::type;
-  spmv (mode, alpha, A, x, beta, y, RANK_SPECIALISE ());
+  spmv(mode, alpha, A, x, beta, y, tuner, RANK_SPECIALISE ());
+}
+
+// Convenience function to simplify specifying template arguments in the code
+template <class... Args>
+void
+spmv(Args&&... args){
+  NullTuner tuner;
+  spmv_tuned(std::forward<Args>(args)..., tuner);
 }
 
   namespace Experimental {

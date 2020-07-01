@@ -205,8 +205,11 @@ struct SPMV_Functor {
   }
 };
 
-template<class execution_space>
-int64_t spmv_launch_parameters(int64_t numRows, int64_t nnz, int64_t rows_per_thread, int& team_size, int& vector_length) {
+template<class AMatrix>
+int64_t spmv_launch_parameters(const AMatrix& A, int64_t rows_per_thread, int& team_size, int& vector_length) {
+  using execution_space = typename AMatrix::execution_space;
+  auto numRows = A.numRows();
+  auto nnz = A.nnz();
   int64_t rows_per_team;
   int64_t nnz_per_row = nnz/numRows;
 
@@ -256,10 +259,10 @@ int64_t spmv_launch_parameters(int64_t numRows, int64_t nnz, int64_t rows_per_th
 }
 
 enum PropertyIndex {
-  SpmvMode = 0,
-  SpmvBeta = 1,
-  SpmvAx =  2,
-  SpmvDone = 3
+  SpmvMode  = 0,
+  SpmvBeta  = 1,
+  SpmvAx    = 2,
+  SpmvDone  = 3
 };
 
 struct LargeA {
@@ -318,7 +321,7 @@ struct TeamConfig {
 template <int Idx, class... Props>
 using GetProperty = typename std::tuple_element<Idx, std::tuple<Props...>>::type;
   
-template <class AMatrix, class XVector, class YVector, class... Props>
+template <class AMatrix, class XVector, class YVector, class Tuner, class... Props>
 struct SpecializeSpmvOp {
 
   using coefficient_type =  typename YVector::non_const_value_type;
@@ -326,13 +329,29 @@ struct SpecializeSpmvOp {
   using op_type = SPMV_Functor<AMatrix, XVector, YVector, Props...>;
 
   static op_type get_op(const TeamConfig& cfg, coefficient_type alpha, coefficient_type beta, 
-                        const AMatrix& A, const XVector& x, const YVector& y){
+                        const AMatrix& A, const XVector& x, const YVector& y, Tuner& tuner){
     return op_type(alpha, A, x, beta, y, cfg.rows_per_team);
   }
 };
 
+template <class AMatrix, class XVector, class YVector, class Tuner, class... Props>
+struct SpecializeSpmvTeamPolicy;
+
+template <class AMatrix, class XVector, class YVector, class Policy, class... Props>
+struct SpecializeSpmvTeamPolicy<AMatrix,XVector,YVector,TeamTuner<Policy>,Props...> {
+  using execution_space = typename AMatrix::execution_space;
+  using coefficient_type =  typename YVector::non_const_value_type;
+
+  static Policy get_policy(TeamConfig& cfg, coefficient_type alpha, coefficient_type beta, 
+                           const AMatrix& A, const XVector& x, const YVector& y, TeamTuner<Policy>& tuner){
+    auto ignore_rows_per_thread = -1;
+    cfg.rows_per_team = spmv_launch_parameters(A,ignore_rows_per_thread,tuner.team_size,tuner.vector_length);
+    return Policy(cfg.worksets,tuner.team_size,tuner.vector_length);
+  }
+};
+
 template <class AMatrix, class XVector, class YVector, class... Props>
-struct SpecializeSpmvTeamPolicy {
+struct SpecializeSpmvTeamPolicy<AMatrix,XVector,YVector,NullTuner,Props...> {
 
   using execution_space = typename AMatrix::execution_space;
   using coefficient_type =  typename YVector::non_const_value_type;
@@ -341,7 +360,8 @@ struct SpecializeSpmvTeamPolicy {
   using static_type = Kokkos::TeamPolicy<execution_space, Kokkos::Schedule<Kokkos::Static>>;
   using team_type = typename std::conditional<GetProperty<SpmvAx,Props...>::dynamic_teams,dynamic_type,static_type>::type;
 
-  static team_type get_policy(const TeamConfig& cfg, coefficient_type alpha, coefficient_type beta, const AMatrix& A, const XVector& x, const YVector& y){
+  static team_type get_policy(const TeamConfig& cfg, coefficient_type alpha, coefficient_type beta, 
+                              const AMatrix& A, const XVector& x, const YVector& y, const NullTuner& tuner){
     if (cfg.team_size < 0){
       return team_type(cfg.worksets,Kokkos::AUTO,cfg.vector_length);
     } else {
@@ -357,17 +377,16 @@ struct SpecializeSpmv;
 
 template <class... Properties>
 struct SpecializeSpmv<SpmvDone,Properties...> {
-  template <class Alpha, class Beta, class AMatrix, class XVector, class YVector>
-  void operator()(Alpha alpha, Beta beta, const AMatrix& A, const XVector& x, const YVector& y){
+  template <class Alpha, class Beta, class AMatrix, class XVector, class YVector, class Tuner>
+  void operator()(Alpha alpha, Beta beta, const AMatrix& A, const XVector& x, const YVector& y, Tuner& tuner){
     //if we have reached here, we have not branched into a special implementation
     //go ahead and run a default implementation
     TeamConfig cfg;
-    cfg.rows_per_team = spmv_launch_parameters<typename AMatrix::execution_space>(
-                          A.numRows(),A.nnz(),cfg.rows_per_thread,cfg.team_size,cfg.vector_length);
+    cfg.rows_per_team = spmv_launch_parameters(A,cfg.rows_per_thread,cfg.team_size,cfg.vector_length);
     cfg.worksets = (y.extent(0)+cfg.rows_per_team-1)/cfg.rows_per_team;
 
-    auto op = SpecializeSpmvOp<AMatrix,XVector,YVector,Properties...>::get_op(cfg, alpha, beta, A, x, y);
-    auto policy = SpecializeSpmvTeamPolicy<AMatrix,XVector,YVector,Properties...>::get_policy(cfg, alpha, beta, A, x, y);
+    auto op = SpecializeSpmvOp<AMatrix,XVector,YVector,Tuner,Properties...>::get_op(cfg, alpha, beta, A, x, y, tuner); //do not pass tuner as forward
+    auto policy = SpecializeSpmvTeamPolicy<AMatrix,XVector,YVector,Tuner,Properties...>::get_policy(cfg, alpha, beta, A, x, y, tuner);
     Kokkos::parallel_for(op.str(), policy, op);
   }
 };
@@ -375,8 +394,8 @@ struct SpecializeSpmv<SpmvDone,Properties...> {
 
 template <class... Properties>
 struct SpecializeSpmv<SpmvAx,Properties...> {
-  template <class AMatrix, class XVector, class YVector>
-  void operator()(double alpha, double beta, const AMatrix& A, const XVector& x, const YVector& y){
+  template <class AMatrix, class XVector, class YVector, class Tuner>
+  void operator()(double alpha, double beta, const AMatrix& A, const XVector& x, const YVector& y, Tuner& tuner){
 #ifdef KOKKOS_ENABLE_OPENMP
     using execution_space = typename AMatrix::execution_space;
     static constexpr bool have_openmp_impl = std::is_same<execution_space,Kokkos::OpenMP>::value &&
@@ -394,9 +413,9 @@ struct SpecializeSpmv<SpmvAx,Properties...> {
 #endif
     constexpr enum PropertyIndex next = static_cast<PropertyIndex>(SpmvAx+1);
     if (A.nnz()>10000000) {
-      SpecializeSpmv<next,Properties...,LargeA>()(alpha,beta,A,x,y);
+      SpecializeSpmv<next,Properties...,LargeA>()(alpha,beta,A,x,y,tuner);
     } else {
-      SpecializeSpmv<next,Properties...,SmallA>()(alpha,beta,A,x,y);
+      SpecializeSpmv<next,Properties...,SmallA>()(alpha,beta,A,x,y,tuner);
     }
   }
 };
@@ -423,8 +442,8 @@ struct SpecializeSpmv<SpmvMode,Properties...> {
 
 template <class... Properties>
 struct SpecializeSpmv<SpmvBeta,Properties...> {
-  template <class Alpha, class Beta, class AMatrix, class XVector, class YVector>
-  void operator()(Alpha alpha, Beta beta, const AMatrix& A, const XVector& x, const YVector& y){
+  template <class Alpha, class Beta, class AMatrix, class XVector, class YVector, class Tuner>
+  void operator()(Alpha alpha, Beta beta, const AMatrix& A, const XVector& x, const YVector& y, Tuner& tuner){
     using coefficient_type = typename YVector::non_const_value_type;
     using KAT = Kokkos::Details::ArithTraits<coefficient_type>;
     constexpr enum PropertyIndex next = static_cast<PropertyIndex>(SpmvBeta+1);
@@ -433,13 +452,13 @@ struct SpecializeSpmv<SpmvBeta,Properties...> {
         KokkosBlas::scal (y, beta, y);
       }
     } else if (beta == KAT::zero ()) {
-      SpecializeSpmv<next,Properties...,BetaZero>()(alpha,beta,A,x,y);
+      SpecializeSpmv<next,Properties...,BetaZero>()(alpha,beta,A,x,y,tuner);
     } else if (beta == KAT::one ()) {
-      SpecializeSpmv<next,Properties...,BetaOne>()(alpha,beta,A,x,y);
+      SpecializeSpmv<next,Properties...,BetaOne>()(alpha,beta,A,x,y,tuner);
     } else if (beta == -KAT::one ()) {
-      SpecializeSpmv<next,Properties...,BetaMinusOne>()(alpha,beta,A,x,y);
+      SpecializeSpmv<next,Properties...,BetaMinusOne>()(alpha,beta,A,x,y,tuner);
     } else {
-      SpecializeSpmv<next,Properties...,BetaAnyValue>()(alpha,beta,A,x,y);
+      SpecializeSpmv<next,Properties...,BetaAnyValue>()(alpha,beta,A,x,y,tuner);
     }
   }
 };
